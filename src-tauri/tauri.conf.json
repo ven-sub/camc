@@ -1,0 +1,90 @@
+{
+  "$schema": "https://schema.tauri.app/config/2.0.0",
+  "productName": "Circuit Assistant Mobile Companion",
+  "version": "0.1.0",
+  "identifier": "org.circuitassistant.camc",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1421",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "fullscreen": false,
+        "resizable": true,
+        "title": "Circuit Assistant Mobile Companion",
+        "width": 800,
+        "height": 600,
+        "minWidth": 400,
+        "minHeight": 300
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [],
+    "resources": [],
+    "externalBin": [],
+    "copyright": "",
+    "category": "DeveloperTool",
+    "shortDescription": "Circuit Assistant Mobile Companion - Local-first mobile and desktop app",
+    "longDescription": "Circuit Assistant Mobile Companion - A local-first cross-platform application built with Tauri v2, Vue 3, Quasar, and TypeScript. Supports iOS, Android, Windows, macOS, and Linux with offline-first architecture.",
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.13",
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "providerShortName": null,
+      "entitlements": null
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "tsp": false
+    },
+    "linux": {
+      "deb": {
+        "depends": [],
+        "files": {},
+        "desktopTemplate": null
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    }
+  },
+  "plugins": {
+    "fs": {
+      "all": true,
+      "readFile": true,
+      "writeFile": true,
+      "readDir": true,
+      "copyFile": true,
+      "createDir": true,
+      "removeDir": true,
+      "removeFile": true,
+      "renameFile": true,
+      "exists": true,
+      "scope": ["$APPDATA", "$APPDATA/**", "$HOME", "$HOME/**"]
+    },
+    "dialog": {
+      "all": true,
+      "ask": true,
+      "confirm": true,
+      "message": true,
+      "open": true,
+      "save": true
+    },
+    "shell": {
+      "all": false,
+      "open": true
+    }
+  }
+}
