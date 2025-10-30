@@ -873,11 +873,13 @@ const addNewVisit = () => {
   }).onOk(() => {
     // Reset schedule
     Object.keys(schedule.value).forEach(day => {
-      Object.keys(schedule.value[day]).forEach(field => {
-        if (typeof schedule.value[day][field] === 'string') {
-          schedule.value[day][field] = ''
-        } else if (typeof schedule.value[day][field] === 'boolean') {
-          schedule.value[day][field] = false
+      const dayKey = day as keyof typeof schedule.value
+      Object.keys(schedule.value[dayKey]).forEach(field => {
+        const fieldKey = field as keyof typeof schedule.value[typeof dayKey]
+        if (typeof schedule.value[dayKey][fieldKey] === 'string') {
+          (schedule.value[dayKey][fieldKey] as string) = ''
+        } else if (typeof schedule.value[dayKey][fieldKey] === 'boolean') {
+          (schedule.value[dayKey][fieldKey] as boolean) = false
         }
       })
     })
@@ -891,13 +893,17 @@ const addNewVisit = () => {
 
 const updateServantsMeeting = (value: boolean) => {
   if (value) {
-    schedule.value[scheduleControls.value.servantsDay].servantsMeeting = true
+    const dayKey = scheduleControls.value.servantsDay as keyof typeof schedule.value
+    if (dayKey !== 'tuesday') {
+      (schedule.value[dayKey] as any).servantsMeeting = true
+    }
   } else {
     // Clear all servants meetings
-    Object.keys(schedule.value).forEach(day => {
+    const scheduleObj = schedule.value as any
+    Object.keys(scheduleObj).forEach((day: string) => {
       if (day !== 'tuesday') {
-        schedule.value[day].servantsMeeting = false
-        schedule.value[day].servantsTime = ''
+        scheduleObj[day].servantsMeeting = false
+        scheduleObj[day].servantsTime = ''
       }
     })
   }
@@ -905,13 +911,17 @@ const updateServantsMeeting = (value: boolean) => {
 
 const updatePioneersMeeting = (value: boolean) => {
   if (value) {
-    schedule.value[scheduleControls.value.pioneersDay].pioneersMeeting = true
+    const dayKey = scheduleControls.value.pioneersDay as keyof typeof schedule.value
+    if (dayKey !== 'tuesday') {
+      (schedule.value[dayKey] as any).pioneersMeeting = true
+    }
   } else {
     // Clear all pioneers meetings
-    Object.keys(schedule.value).forEach(day => {
+    const scheduleObj = schedule.value as any
+    Object.keys(scheduleObj).forEach((day: string) => {
       if (day !== 'tuesday') {
-        schedule.value[day].pioneersMeeting = false
-        schedule.value[day].pioneersTime = ''
+        scheduleObj[day].pioneersMeeting = false
+        scheduleObj[day].pioneersTime = ''
       }
     })
   }
