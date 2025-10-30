@@ -42,12 +42,29 @@ jobs:
         run: |
           npm run build --if-present
 
+      - name: Configure pkg-config paths
+        run: |
+          ARCH=$(dpkg-architecture -qDEB_HOST_MULTIARCH)
+          echo "ARCH=$ARCH" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/usr/lib/$ARCH/pkgconfig:/usr/share/pkgconfig:/usr/lib/pkgconfig:/usr/local/lib/pkgconfig" >> $GITHUB_ENV
+          echo "PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1" >> $GITHUB_ENV
+
       - name: Ensure pkg-config can find glib-2.0
         run: |
-          echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig:/usr/local/lib/pkgconfig" >> $GITHUB_ENV
-          pkg-config --modversion glib-2.0
-          pkg-config --cflags --libs glib-2.0
+          echo "Using PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
+          pkg-config --print-errors --modversion glib-2.0
+          pkg-config --print-errors --cflags --libs glib-2.0
 
       - name: Build Rust (src-tauri)
+        env:
+          PKG_CONFIG_PATH: ${{ env.PKG_CONFIG_PATH }}
+          PKG_CONFIG_ALLOW_SYSTEM_CFLAGS: ${{ env.PKG_CONFIG_ALLOW_SYSTEM_CFLAGS }}
         run: |
           cargo build --manifest-path src-tauri/Cargo.toml --verbose
+
+      - name: Test Rust (src-tauri)
+        env:
+          PKG_CONFIG_PATH: ${{ env.PKG_CONFIG_PATH }}
+          PKG_CONFIG_ALLOW_SYSTEM_CFLAGS: ${{ env.PKG_CONFIG_ALLOW_SYSTEM_CFLAGS }}
+        run: |
+          cargo test --manifest-path src-tauri/Cargo.toml --verbose
