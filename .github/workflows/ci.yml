@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,19 +46,18 @@ jobs:
         run: |
           ARCH=$(dpkg-architecture -qDEB_HOST_MULTIARCH)
           echo "ARCH=$ARCH" >> $GITHUB_ENV
-          COMMON_PC_PATH="/usr/lib/$ARCH/pkgconfig:/usr/share/pkgconfig:/usr/lib/pkgconfig:/usr/local/lib/pkgconfig"
-          echo "PKG_CONFIG_PATH=$COMMON_PC_PATH" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH_x86_64-unknown-linux-gnu=$COMMON_PC_PATH" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH_x86_64_unknown_linux_gnu=$COMMON_PC_PATH" >> $GITHUB_ENV
           echo "PKG_CONFIG=/usr/bin/pkg-config" >> $GITHUB_ENV
           echo "PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1" >> $GITHUB_ENV
+          # Derive PKG_CONFIG_PATH from pkg-config itself to match system defaults
+          DEFAULT_PC_PATH=$(pkg-config --variable pc_path pkg-config)
+          echo "PKG_CONFIG_PATH=$DEFAULT_PC_PATH" >> $GITHUB_ENV
 
       - name: Ensure pkg-config can find glib-2.0
         run: |
           echo "Using PKG_CONFIG=$PKG_CONFIG"
           echo "Using PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
-          echo "Using PKG_CONFIG_PATH_x86_64-unknown-linux-gnu=$PKG_CONFIG_PATH_x86_64-unknown-linux-gnu"
-          echo "Using PKG_CONFIG_PATH_x86_64_unknown_linux_gnu=$PKG_CONFIG_PATH_x86_64_unknown_linux_gnu"
+          # Verify the .pc file is present in the system
+          dpkg -L libglib2.0-dev | grep -E '/pkgconfig/glib-2.0.pc$'
           pkg-config --print-errors --modversion glib-2.0
           pkg-config --print-errors --cflags --libs glib-2.0
 
@@ -66,8 +65,6 @@ jobs:
         env:
           PKG_CONFIG: ${{ env.PKG_CONFIG }}
           PKG_CONFIG_PATH: ${{ env.PKG_CONFIG_PATH }}
-          PKG_CONFIG_PATH_x86_64-unknown-linux-gnu: ${{ env.PKG_CONFIG_PATH_x86_64-unknown-linux-gnu }}
-          PKG_CONFIG_PATH_x86_64_unknown_linux_gnu: ${{ env.PKG_CONFIG_PATH_x86_64_unknown_linux_gnu }}
           PKG_CONFIG_ALLOW_SYSTEM_CFLAGS: ${{ env.PKG_CONFIG_ALLOW_SYSTEM_CFLAGS }}
         run: |
           cargo build --manifest-path src-tauri/Cargo.toml --verbose
@@ -83,8 +80,6 @@ jobs:
         env:
           PKG_CONFIG: ${{ env.PKG_CONFIG }}
           PKG_CONFIG_PATH: ${{ env.PKG_CONFIG_PATH }}
-          PKG_CONFIG_PATH_x86_64-unknown-linux-gnu: ${{ env.PKG_CONFIG_PATH_x86_64-unknown-linux-gnu }}
-          PKG_CONFIG_PATH_x86_64_unknown_linux_gnu: ${{ env.PKG_CONFIG_PATH_x86_64_unknown_linux_gnu }}
           PKG_CONFIG_ALLOW_SYSTEM_CFLAGS: ${{ env.PKG_CONFIG_ALLOW_SYSTEM_CFLAGS }}
         run: |
           cargo test --manifest-path src-tauri/Cargo.toml --verbose
