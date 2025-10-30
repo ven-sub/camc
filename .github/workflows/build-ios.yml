@@ -31,7 +31,7 @@ jobs:
         targets: aarch64-apple-ios,aarch64-apple-ios-sim
         
     - name: Cache Rust dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/bin/
@@ -59,7 +59,7 @@ jobs:
       run: npm run tauri:ios:build -- --target aarch64-apple-ios-sim
       
     - name: Upload iOS build
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: camc-ios-${{ github.ref_name }}
         path: src-tauri/gen/ios/build/

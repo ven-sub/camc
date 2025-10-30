@@ -30,7 +30,7 @@ jobs:
         targets: x86_64-apple-darwin,aarch64-apple-darwin
         
     - name: Cache Rust dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/bin/
@@ -55,13 +55,13 @@ jobs:
       run: npm run tauri:build -- --target aarch64-apple-darwin
       
     - name: Upload macOS Intel build
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: camc-macos-intel
         path: src-tauri/target/x86_64-apple-darwin/release/bundle/
         
     - name: Upload macOS Apple Silicon build
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: camc-macos-apple-silicon
         path: src-tauri/target/aarch64-apple-darwin/release/bundle/
@@ -87,7 +87,7 @@ jobs:
         targets: x86_64-pc-windows-msvc
         
     - name: Cache Rust dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/bin/
@@ -109,7 +109,7 @@ jobs:
       run: npm run tauri:build
       
     - name: Upload Windows build
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: camc-windows
         path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/
