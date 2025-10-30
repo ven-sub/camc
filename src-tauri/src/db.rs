@@ -1,6 +1,7 @@
 use rusqlite::{Connection, Result};
 use std::path::PathBuf;
 
+#[allow(dead_code)]
 pub fn init_db() -> Result<Connection> {
     let db_path = get_db_path();
     let conn = Connection::open(db_path)?;
@@ -11,6 +12,7 @@ pub fn init_db() -> Result<Connection> {
     Ok(conn)
 }
 
+#[allow(dead_code)]
 fn get_db_path() -> PathBuf {
     let mut path = dirs::data_dir().unwrap_or_else(|| std::env::current_dir().unwrap());
     path.push("circuit-assistant-mobile-companion");

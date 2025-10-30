@@ -3,25 +3,28 @@
 
 mod db;
 
-use db::init_db;
 use rusqlite::Connection;
 use std::sync::Mutex;
 
 // Global database connection
+#[allow(dead_code)]
 type DbConnection = Mutex<Connection>;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
+#[allow(dead_code)]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
 #[tauri::command]
+#[allow(dead_code)]
 fn test_db_connection() -> String {
     "Database ready: camc.db".to_string()
 }
 
 #[tauri::command]
+#[allow(dead_code)]
 fn get_platform() -> String {
     #[cfg(target_os = "windows")]
     return "windows".to_string();
@@ -40,7 +43,7 @@ fn get_platform() -> String {
 #[tauri::mobile_entry_point]
 fn main() {
     // Initialize database
-    let conn = init_db().expect("Failed to initialize database");
+    let conn = db::init_db().expect("Failed to initialize database");
     
     tauri::Builder::default()
         .manage(Mutex::new(conn))
