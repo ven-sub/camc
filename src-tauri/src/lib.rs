@@ -44,12 +44,12 @@ fn get_platform() -> String {
 fn main() {
     // Initialize database
     let conn = db::init_db().expect("Failed to initialize database");
-    
+
     tauri::Builder::default()
         .manage(Mutex::new(conn))
         .invoke_handler(tauri::generate_handler![
-            greet, 
-            get_platform, 
+            greet,
+            get_platform,
             test_db_connection
         ])
         .run(tauri::generate_context!())

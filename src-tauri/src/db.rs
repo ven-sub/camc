@@ -5,10 +5,10 @@ use std::path::PathBuf;
 pub fn init_db() -> Result<Connection> {
     let db_path = get_db_path();
     let conn = Connection::open(db_path)?;
-    
+
     // Database is ready for future tables
     // No tables needed yet, just the scaffolding
-    
+
     Ok(conn)
 }
 
@@ -20,4 +20,3 @@ fn get_db_path() -> PathBuf {
     path.push("camc.db");
     path
 }
-
