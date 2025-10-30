@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+
+  build-desktop-platforms:
+    name: Build Desktop Platforms
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - platform: macos-intel
+            os: macos-latest
+            target: x86_64-apple-darwin
+          - platform: macos-apple-silicon
+            os: macos-latest
+            target: aarch64-apple-darwin
+          - platform: windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - platform: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.target }}
+        
+    - name: Cache Rust dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          src-tauri/target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+          
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install Tauri CLI
+      run: npm install -g @tauri-apps/cli@next
+      
+    - name: Build for ${{ matrix.platform }}
+      run: npm run tauri:build -- --target ${{ matrix.target }}
+      
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: |
+          ${{ matrix.platform == 'macos-intel' && 'src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/' || '' }}
+          ${{ matrix.platform == 'macos-apple-silicon' && 'src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/' || '' }}
+          ${{ matrix.platform == 'windows' && 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/' || '' }}
+          ${{ matrix.platform == 'linux' && 'src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/' || '' }}
+        asset_name: camc-desktop-${{ matrix.platform }}-${{ github.ref_name }}
+        asset_content_type: application/octet-stream

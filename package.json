@@ -15,7 +15,10 @@
     "tauri:android:dev": "tauri android dev",
     "tauri:ios:dev": "tauri ios dev",
     "tauri:android:build": "tauri android build",
-    "tauri:ios:build": "tauri ios build"
+    "tauri:ios:build": "tauri ios build",
+    "lint": "echo 'No lint script configured yet'",
+    "type-check": "vue-tsc --noEmit",
+    "test": "echo 'No test script configured yet'"
   },
   "dependencies": {
     "@quasar/extras": "^1.17.0",
