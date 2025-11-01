@@ -77,10 +77,14 @@ jobs:
       run: |
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
         echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
-        PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< $(security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision))
+        PROFILE_DATA=$(security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision)
+        PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< "$PROFILE_DATA")
+        DEVELOPMENT_TEAM=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' /dev/stdin <<< "$PROFILE_DATA" || /usr/libexec/PlistBuddy -c 'Print :TeamIdentifier' /dev/stdin <<< "$PROFILE_DATA")
         mv ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$PROFILE_UUID.mobileprovision
         echo "PROVISIONING_PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
+        echo "DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM" >> $GITHUB_ENV
         echo "Installed provisioning profile: $PROFILE_UUID"
+        echo "Development team: $DEVELOPMENT_TEAM"
       
     - name: Setup iOS project
       run: |
@@ -94,6 +98,7 @@ jobs:
     - name: Configure Xcode Project for Manual Signing
       run: |
         PROVISIONING_PROFILE_UUID="${{ env.PROVISIONING_PROFILE_UUID }}"
+        DEVELOPMENT_TEAM="${{ env.DEVELOPMENT_TEAM }}"
         # Update Xcode project to use manual code signing
         XCODE_PROJECT="src-tauri/gen/apple/circuit-assistant-mobile-companion.xcodeproj"
         PROJECT_FILE="$XCODE_PROJECT/project.pbxproj"
@@ -114,15 +119,23 @@ jobs:
         sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development";/CODE_SIGN_IDENTITY = "Apple Distribution";/g' "$PROJECT_FILE"
         sed -i '' 's/CODE_SIGN_IDENTITY = "";/CODE_SIGN_IDENTITY = "Apple Distribution";/g' "$PROJECT_FILE"
         
+        # Set DEVELOPMENT_TEAM
+        if grep -q "DEVELOPMENT_TEAM" "$PROJECT_FILE"; then
+          sed -i '' "s/DEVELOPMENT_TEAM = .*/DEVELOPMENT_TEAM = $DEVELOPMENT_TEAM;/g" "$PROJECT_FILE"
+        else
+          # Add DEVELOPMENT_TEAM after CODE_SIGN_IDENTITY
+          perl -i -pe "s/(CODE_SIGN_IDENTITY = \"Apple Distribution\";)/\$1\n\t\t\t\tDEVELOPMENT_TEAM = $DEVELOPMENT_TEAM;/" "$PROJECT_FILE"
+        fi
+        
         # Update or add PROVISIONING_PROFILE_SPECIFIER
         if grep -q "PROVISIONING_PROFILE_SPECIFIER" "$PROJECT_FILE"; then
           sed -i '' "s/PROVISIONING_PROFILE_SPECIFIER = .*/PROVISIONING_PROFILE_SPECIFIER = $PROVISIONING_PROFILE_UUID;/g" "$PROJECT_FILE"
         else
-          # Add PROVISIONING_PROFILE_SPECIFIER after CODE_SIGN_IDENTITY
-          perl -i -pe "s/(CODE_SIGN_IDENTITY = \"Apple Distribution\";)/\$1\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = $PROVISIONING_PROFILE_UUID;/" "$PROJECT_FILE"
+          # Add PROVISIONING_PROFILE_SPECIFIER after DEVELOPMENT_TEAM
+          perl -i -pe "s/(DEVELOPMENT_TEAM = $DEVELOPMENT_TEAM;)/\$1\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = $PROVISIONING_PROFILE_UUID;/" "$PROJECT_FILE"
         fi
         
-        echo "Updated Xcode project for manual signing with profile: $PROVISIONING_PROFILE_UUID"
+        echo "Updated Xcode project for manual signing with profile: $PROVISIONING_PROFILE_UUID and team: $DEVELOPMENT_TEAM"
       
     - name: Build iOS IPA for TestFlight
       env:
@@ -130,6 +143,7 @@ jobs:
         APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
         APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
         PROVISIONING_PROFILE_UUID: ${{ env.PROVISIONING_PROFILE_UUID }}
+        DEVELOPMENT_TEAM: ${{ env.DEVELOPMENT_TEAM }}
       run: |
         # Build Rust library first (this is what Tauri iOS build does internally)
         # We'll skip the full iOS build and do the archive ourselves
@@ -176,7 +190,7 @@ jobs:
           CODE_SIGN_STYLE=Manual \
           CODE_SIGN_IDENTITY="Apple Distribution" \
           PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_UUID" \
-          DEVELOPMENT_TEAM="" \
+          DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
           | xcbeautify || cat
         
         # Export IPA for App Store
