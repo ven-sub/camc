@@ -107,41 +107,25 @@ jobs:
         # Backup the project file
         cp "$PROJECT_FILE" "$PROJECT_FILE.backup"
         
-        # Update code signing settings using Python for more reliable string replacement
-        cat > /tmp/update_xcode_project.py << 'SCRIPTEND'
-import re
-import os
-
-project_file = os.environ.get('PROJECT_FILE')
-profile_uuid = os.environ.get('PROVISIONING_PROFILE_UUID')
-
-with open(project_file, "r") as f:
-    content = f.read()
-
-# Set CODE_SIGN_STYLE to Manual
-content = re.sub(r'CODE_SIGN_STYLE = Automatic;', 'CODE_SIGN_STYLE = Manual;', content)
-
-# Set CODE_SIGN_IDENTITY to Apple Distribution
-content = re.sub(r'CODE_SIGN_IDENTITY = "Apple Development";', 'CODE_SIGN_IDENTITY = "Apple Distribution";', content)
-content = re.sub(r'CODE_SIGN_IDENTITY = "";', 'CODE_SIGN_IDENTITY = "Apple Distribution";', content)
-
-# Update or add PROVISIONING_PROFILE_SPECIFIER
-if 'PROVISIONING_PROFILE_SPECIFIER' in content:
-    content = re.sub(r'PROVISIONING_PROFILE_SPECIFIER = [^;]+;', f'PROVISIONING_PROFILE_SPECIFIER = {profile_uuid};', content)
-else:
-    # Add after CODE_SIGN_IDENTITY
-    content = re.sub(
-        r'(CODE_SIGN_IDENTITY = "Apple Distribution";)',
-        f'\\1\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = {profile_uuid};',
-        content
-    )
-
-with open(project_file, "w") as f:
-    f.write(content)
-
-print(f"Updated Xcode project for manual signing with profile: {profile_uuid}")
-SCRIPTEND
-        python3 /tmp/update_xcode_project.py
+        # Update code signing settings using sed (simpler and avoids YAML parsing issues)
+        # Set CODE_SIGN_STYLE to Manual
+        sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PROJECT_FILE"
+        
+        # Set CODE_SIGN_IDENTITY to Apple Distribution
+        sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development";/CODE_SIGN_IDENTITY = "Apple Distribution";/g' "$PROJECT_FILE"
+        sed -i '' 's/CODE_SIGN_IDENTITY = "";/CODE_SIGN_IDENTITY = "Apple Distribution";/g' "$PROJECT_FILE"
+        
+        # Update or add PROVISIONING_PROFILE_SPECIFIER
+        if grep -q "PROVISIONING_PROFILE_SPECIFIER" "$PROJECT_FILE"; then
+          sed -i '' "s/PROVISIONING_PROFILE_SPECIFIER = .*/PROVISIONING_PROFILE_SPECIFIER = $PROVISIONING_PROFILE_UUID;/g" "$PROJECT_FILE"
+        else
+          # Add PROVISIONING_PROFILE_SPECIFIER after CODE_SIGN_IDENTITY
+          sed -i '' "/CODE_SIGN_IDENTITY = \"Apple Distribution\";/a\\
+						PROVISIONING_PROFILE_SPECIFIER = $PROVISIONING_PROFILE_UUID;
+" "$PROJECT_FILE"
+        fi
+        
+        echo "Updated Xcode project for manual signing with profile: $PROVISIONING_PROFILE_UUID"
       
     - name: Build iOS IPA for TestFlight
       env:
