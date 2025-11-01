@@ -180,15 +180,25 @@ jobs:
         cd src-tauri
         cargo build --target aarch64-apple-ios --release
         
+        # Find the actual library file (could have underscores or hyphens)
+        LIB_FILE=$(find target/aarch64-apple-ios/release -name "lib*.a" -type f | head -n 1)
+        if [ -z "$LIB_FILE" ]; then
+          echo "Error: Could not find built Rust library in target/aarch64-apple-ios/release/"
+          ls -la target/aarch64-apple-ios/release/ || echo "Directory does not exist"
+          exit 1
+        fi
+        echo "Found Rust library: $LIB_FILE"
+        
         # Ensure the library is in the location Tauri expects for Release builds
         mkdir -p gen/apple/Externals/arm64/Release
-        cp target/aarch64-apple-ios/release/libcircuit_assistant_mobile_companion.a gen/apple/Externals/arm64/Release/libapp.a
+        cp "$LIB_FILE" gen/apple/Externals/arm64/Release/libapp.a
+        echo "Copied library to gen/apple/Externals/arm64/Release/libapp.a"
         
         # Also copy to debug location to satisfy any debug checks during build
         mkdir -p gen/apple/Externals/arm64/Debug
-        cp target/aarch64-apple-ios/release/libcircuit_assistant_mobile_companion.a gen/apple/Externals/arm64/Debug/libapp.a
+        cp "$LIB_FILE" gen/apple/Externals/arm64/Debug/libapp.a
+        echo "Copied library to gen/apple/Externals/arm64/Debug/libapp.a"
         
-        # Skip - the wrapper script handles this now
         cd ..
         
         # Create ExportOptions.plist for App Store distribution
