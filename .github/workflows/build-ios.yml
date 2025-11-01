@@ -108,8 +108,7 @@ jobs:
         cp "$PROJECT_FILE" "$PROJECT_FILE.backup"
         
         # Update code signing settings using Python for more reliable string replacement
-        export PROJECT_FILE
-        python3 << 'PYEOF'
+        cat > /tmp/update_xcode_project.py << 'SCRIPTEND'
 import re
 import os
 
@@ -141,7 +140,8 @@ with open(project_file, "w") as f:
     f.write(content)
 
 print(f"Updated Xcode project for manual signing with profile: {profile_uuid}")
-PYEOF
+SCRIPTEND
+        python3 /tmp/update_xcode_project.py
       
     - name: Build iOS IPA for TestFlight
       env:
