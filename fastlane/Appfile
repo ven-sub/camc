@@ -1,0 +1,7 @@
+# App Store Connect API credentials
+# These are set via environment variables in GitHub Actions
+
+app_identifier("org.circuitassistant.camc")
+apple_id(ENV["APPSTORE_APPLE_ID"]) # Optional, only needed for some operations
+team_id(ENV["APPSTORE_TEAM_ID"]) # Optional, your team ID
+

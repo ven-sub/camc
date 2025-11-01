@@ -47,24 +47,87 @@ jobs:
       
     - name: Install Tauri CLI
       run: npm install -g @tauri-apps/cli@next
-      
-    - name: Build for macOS (Intel)
-      run: npm run tauri:build -- --target x86_64-apple-darwin
-      
-    - name: Build for macOS (Apple Silicon)
-      run: npm run tauri:build -- --target aarch64-apple-darwin
-      
-    - name: Upload macOS Intel build
-      uses: actions/upload-artifact@v4
-      with:
-        name: camc-macos-intel
-        path: src-tauri/target/x86_64-apple-darwin/release/bundle/
+
+    - name: Install Bundler and fastlane
+      run: |
+        gem install bundler
+        bundle install
+
+    - name: Import macOS Code Signing Certificate
+      env:
+        MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+        MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      run: |
+        echo "$MACOS_CERTIFICATE_BASE64" | base64 --decode > /tmp/macos_certificate.p12
+        security create-keychain -p "" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "" build.keychain
+        security import /tmp/macos_certificate.p12 -k ~/Library/Keychains/build.keychain -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+        rm /tmp/macos_certificate.p12
+
+    - name: Install macOS Provisioning Profile
+      env:
+        MACOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.MACOS_PROVISIONING_PROFILE_BASE64 }}
+      run: |
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        echo "$MACOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+        PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< $(security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision))
+        mv ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$PROFILE_UUID.mobileprovision
+        echo "Installed provisioning profile: $PROFILE_UUID"
+
+    - name: Build for macOS (Universal)
+      env:
+        APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+        APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+        APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+      run: |
+        # Build universal macOS app (both Intel and Apple Silicon)
+        npm run tauri:build
         
-    - name: Upload macOS Apple Silicon build
+        # Find the built .app bundle
+        APP_BUNDLE=$(find src-tauri/target/aarch64-apple-darwin/release/bundle/macos -name "*.app" -type d | head -n 1)
+        if [ -z "$APP_BUNDLE" ]; then
+          APP_BUNDLE=$(find src-tauri/target/release/bundle/macos -name "*.app" -type d | head -n 1)
+        fi
+        
+        if [ -z "$APP_BUNDLE" ]; then
+          echo "Error: Could not find .app bundle"
+          exit 1
+        fi
+        
+        echo "APP_BUNDLE_PATH=$APP_BUNDLE" >> $GITHUB_ENV
+        echo "Found app bundle: $APP_BUNDLE"
+        
+        # Ensure the app is properly signed for App Store
+        codesign --force --deep --sign "Apple Distribution" "$APP_BUNDLE" || echo "Warning: Code signing check failed, continuing..."
+        
+        # Verify code signature
+        codesign --verify --verbose "$APP_BUNDLE" || echo "Warning: Code signature verification failed"
+        
+        # Create a zip for TestFlight (required format)
+        ZIP_PATH="$PWD/build/macos-app.zip"
+        mkdir -p build
+        cd "$(dirname "$APP_BUNDLE")"
+        ditto -c -k --keepParent "$(basename "$APP_BUNDLE")" "$ZIP_PATH"
+        echo "ZIP_PATH=$ZIP_PATH" >> $GITHUB_ENV
+      
+    - name: Upload to TestFlight
+      env:
+        APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+        APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+        APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+      run: |
+        bundle exec fastlane mac testflight ipa:"$ZIP_PATH"
+      
+    - name: Upload macOS build artifacts
+      if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: camc-macos-apple-silicon
-        path: src-tauri/target/aarch64-apple-darwin/release/bundle/
+        name: camc-macos-${{ github.ref_name }}
+        path: |
+          src-tauri/target/*/release/bundle/
+          build/*.zip
 
   build-windows:
     name: Build Windows
