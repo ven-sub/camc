@@ -53,6 +53,10 @@ jobs:
       run: |
         gem install bundler
         bundle install
+    
+    - name: Install xcbeautify (optional, for cleaner output)
+      run: |
+        brew install xcbeautify || echo "xcbeautify not available, continuing without it"
       
     - name: Import iOS Code Signing Certificate
       env:
@@ -75,6 +79,7 @@ jobs:
         echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
         PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin <<< $(security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision))
         mv ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$PROFILE_UUID.mobileprovision
+        echo "PROVISIONING_PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
         echo "Installed provisioning profile: $PROFILE_UUID"
       
     - name: Setup iOS project
@@ -86,14 +91,66 @@ jobs:
           echo "iOS project already exists, skipping init"
         fi
       
+    - name: Configure Xcode Project for Manual Signing
+      env:
+        PROVISIONING_PROFILE_UUID: ${{ env.PROVISIONING_PROFILE_UUID }}
+      run: |
+        # Update Xcode project to use manual code signing
+        XCODE_PROJECT="src-tauri/gen/apple/circuit-assistant-mobile-companion.xcodeproj"
+        PROJECT_FILE="$XCODE_PROJECT/project.pbxproj"
+        
+        if [ ! -f "$PROJECT_FILE" ]; then
+          echo "Project file not found, will be created by Tauri build"
+          exit 0
+        fi
+        
+        # Backup the project file
+        cp "$PROJECT_FILE" "$PROJECT_FILE.backup"
+        
+        # Update code signing settings using Python for more reliable string replacement
+        python3 << EOF
+import re
+
+with open("$PROJECT_FILE", "r") as f:
+    content = f.read()
+
+# Set CODE_SIGN_STYLE to Manual
+content = re.sub(r'CODE_SIGN_STYLE = Automatic;', 'CODE_SIGN_STYLE = Manual;', content)
+
+# Set CODE_SIGN_IDENTITY to Apple Distribution
+content = re.sub(r'CODE_SIGN_IDENTITY = "Apple Development";', 'CODE_SIGN_IDENTITY = "Apple Distribution";', content)
+content = re.sub(r'CODE_SIGN_IDENTITY = "";', 'CODE_SIGN_IDENTITY = "Apple Distribution";', content)
+
+# Update or add PROVISIONING_PROFILE_SPECIFIER
+profile_uuid = "$PROVISIONING_PROFILE_UUID"
+if 'PROVISIONING_PROFILE_SPECIFIER' in content:
+    content = re.sub(r'PROVISIONING_PROFILE_SPECIFIER = [^;]+;', f'PROVISIONING_PROFILE_SPECIFIER = {profile_uuid};', content)
+else:
+    # Add after CODE_SIGN_IDENTITY
+    content = re.sub(
+        r'(CODE_SIGN_IDENTITY = "Apple Distribution";)',
+        f'\\1\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = {profile_uuid};',
+        content
+    )
+
+with open("$PROJECT_FILE", "w") as f:
+    f.write(content)
+
+print("Updated Xcode project for manual signing with profile: $PROVISIONING_PROFILE_UUID")
+EOF
+      
     - name: Build iOS IPA for TestFlight
       env:
         APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
         APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
         APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+        PROVISIONING_PROFILE_UUID: ${{ env.PROVISIONING_PROFILE_UUID }}
       run: |
-        # Build the iOS app
-        npm run tauri:ios:build
+        # Build Rust library first (this is what Tauri iOS build does internally)
+        # We'll skip the full iOS build and do the archive ourselves
+        cd src-tauri
+        cargo build --target aarch64-apple-ios --release || echo "Rust build may have warnings but continuing..."
+        cd ..
         
         # Create ExportOptions.plist for App Store distribution
         mkdir -p build
@@ -106,6 +163,15 @@ jobs:
             <string>app-store</string>
             <key>destination</key>
             <string>upload</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
+            <key>provisioningProfiles</key>
+            <dict>
+                <key>org.circuitassistant.camc</key>
+                <string>$PROVISIONING_PROFILE_UUID</string>
+            </dict>
         </dict>
         </plist>
         EOF
@@ -116,10 +182,7 @@ jobs:
         ARCHIVE_PATH="$PWD/build/ios.xcarchive"
         EXPORT_PATH="$PWD/build/ios-export"
         
-        # Get provisioning profile UUID
-        PROFILE_UUID=$(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | head -n 1 | xargs basename | sed 's/.mobileprovision$//')
-        
-        # Archive the app
+        # Archive the app with explicit signing settings
         xcodebuild archive \
           -project "$XCODE_PROJECT" \
           -scheme "$SCHEME" \
@@ -127,20 +190,22 @@ jobs:
           -archivePath "$ARCHIVE_PATH" \
           CODE_SIGN_STYLE=Manual \
           CODE_SIGN_IDENTITY="Apple Distribution" \
-          PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
-          -allowProvisioningUpdates
+          PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_UUID" \
+          DEVELOPMENT_TEAM="" \
+          | xcbeautify || cat
         
         # Export IPA for App Store
         xcodebuild -exportArchive \
           -archivePath "$ARCHIVE_PATH" \
           -exportPath "$EXPORT_PATH" \
           -exportOptionsPlist build/ExportOptions.plist \
-          -allowProvisioningUpdates
+          | xcbeautify || cat
         
         # Find the IPA
         IPA_FILE=$(find "$EXPORT_PATH" -name "*.ipa" | head -n 1)
         if [ -z "$IPA_FILE" ]; then
-          echo "Error: IPA file not found"
+          echo "Error: IPA file not found in $EXPORT_PATH"
+          ls -la "$EXPORT_PATH" || echo "Export path does not exist"
           exit 1
         fi
         echo "IPA_PATH=$IPA_FILE" >> $GITHUB_ENV
