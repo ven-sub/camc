@@ -78,7 +78,13 @@ jobs:
         echo "Installed provisioning profile: $PROFILE_UUID"
       
     - name: Setup iOS project
-      run: npm run tauri:ios
+      run: |
+        # Initialize iOS project if it doesn't exist
+        if [ ! -d "src-tauri/gen/apple" ]; then
+          npx @tauri-apps/cli ios init
+        else
+          echo "iOS project already exists, skipping init"
+        fi
       
     - name: Build iOS IPA for TestFlight
       env:
