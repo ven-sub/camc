@@ -108,10 +108,15 @@ jobs:
         cp "$PROJECT_FILE" "$PROJECT_FILE.backup"
         
         # Update code signing settings using Python for more reliable string replacement
-        python3 << EOF
+        export PROJECT_FILE
+        python3 << 'PYEOF'
 import re
+import os
 
-with open("$PROJECT_FILE", "r") as f:
+project_file = os.environ.get('PROJECT_FILE')
+profile_uuid = os.environ.get('PROVISIONING_PROFILE_UUID')
+
+with open(project_file, "r") as f:
     content = f.read()
 
 # Set CODE_SIGN_STYLE to Manual
@@ -122,7 +127,6 @@ content = re.sub(r'CODE_SIGN_IDENTITY = "Apple Development";', 'CODE_SIGN_IDENTI
 content = re.sub(r'CODE_SIGN_IDENTITY = "";', 'CODE_SIGN_IDENTITY = "Apple Distribution";', content)
 
 # Update or add PROVISIONING_PROFILE_SPECIFIER
-profile_uuid = "$PROVISIONING_PROFILE_UUID"
 if 'PROVISIONING_PROFILE_SPECIFIER' in content:
     content = re.sub(r'PROVISIONING_PROFILE_SPECIFIER = [^;]+;', f'PROVISIONING_PROFILE_SPECIFIER = {profile_uuid};', content)
 else:
@@ -133,11 +137,11 @@ else:
         content
     )
 
-with open("$PROJECT_FILE", "w") as f:
+with open(project_file, "w") as f:
     f.write(content)
 
-print("Updated Xcode project for manual signing with profile: $PROVISIONING_PROFILE_UUID")
-EOF
+print(f"Updated Xcode project for manual signing with profile: {profile_uuid}")
+PYEOF
       
     - name: Build iOS IPA for TestFlight
       env:
