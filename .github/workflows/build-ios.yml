@@ -136,6 +136,42 @@ jobs:
         fi
         
         echo "Updated Xcode project for manual signing with profile: $PROVISIONING_PROFILE_UUID and team: $DEVELOPMENT_TEAM"
+        
+        # Modify the build script to skip Tauri CLI if library already exists
+        # This prevents the dev server connection error in CI
+        if grep -q "tauri ios xcode-script" "$PROJECT_FILE"; then
+          # Create a wrapper script that checks if libapp.a exists before calling Tauri
+          WRAPPER_DIR="$(dirname "$PROJECT_FILE")"
+          WRAPPER_SCRIPT="$WRAPPER_DIR/build_rust_wrapper.sh"
+          cat > "$WRAPPER_SCRIPT" << WRAPPEREOF
+#!/bin/bash
+# Wrapper script that skips Tauri CLI if library is already built
+# Get the absolute path to the project directory
+PROJECT_DIR="$WRAPPER_DIR"
+LIB_PATH_RELEASE="\$PROJECT_DIR/Externals/arm64/Release/libapp.a"
+LIB_PATH_DEBUG="\$PROJECT_DIR/Externals/arm64/Debug/libapp.a"
+
+# Check if library exists for current configuration
+if [ "\${CONFIGURATION}" = "Release" ] && [ -f "\$LIB_PATH_RELEASE" ]; then
+  echo "Pre-built Rust library found at \$LIB_PATH_RELEASE, skipping Tauri build script"
+  exit 0
+elif [ "\${CONFIGURATION}" = "Debug" ] && [ -f "\$LIB_PATH_DEBUG" ]; then
+  echo "Pre-built Rust library found at \$LIB_PATH_DEBUG, skipping Tauri build script"
+  exit 0
+fi
+
+# Library not found, run original Tauri command
+cd "$PWD"
+exec npm run -- tauri ios xcode-script "\$@"
+WRAPPEREOF
+          chmod +x "$WRAPPER_SCRIPT"
+          
+          # Update the project file to use the wrapper script
+          # Escape the path for sed (use absolute path)
+          ESCAPED_WRAPPER=$(echo "$WRAPPER_SCRIPT" | sed 's/\//\\\//g')
+          sed -i '' "s|npm run -- tauri ios xcode-script|$ESCAPED_WRAPPER|g" "$PROJECT_FILE"
+          echo "Updated build script to use wrapper that checks for pre-built library"
+        fi
       
     - name: Build iOS IPA for TestFlight
       env:
@@ -149,9 +185,23 @@ jobs:
         cd src-tauri
         cargo build --target aarch64-apple-ios --release
         
-        # Ensure the library is in the location Tauri expects
+        # Ensure the library is in the location Tauri expects for Release builds
         mkdir -p gen/apple/Externals/arm64/Release
-        cp target/aarch64-apple-ios/release/libcircuit_assistant_mobile_companion.a gen/apple/Externals/arm64/Release/libapp.a || true
+        cp target/aarch64-apple-ios/release/libcircuit_assistant_mobile_companion.a gen/apple/Externals/arm64/Release/libapp.a
+        
+        # Also copy to debug location to satisfy any debug checks during build
+        mkdir -p gen/apple/Externals/arm64/Debug
+        cp target/aarch64-apple-ios/release/libcircuit_assistant_mobile_companion.a gen/apple/Externals/arm64/Debug/libapp.a
+        
+        # Create a dummy script that just exits successfully to replace the Tauri build script
+        # This avoids the dev server connection issue
+        cat > gen/apple/build_rust_stub.sh << 'EOF'
+#!/bin/sh
+# Stub script - Rust library is pre-built
+echo "Using pre-built Rust library"
+exit 0
+EOF
+        chmod +x gen/apple/build_rust_stub.sh
         cd ..
         
         # Create ExportOptions.plist for App Store distribution
@@ -184,24 +234,21 @@ jobs:
         ARCHIVE_PATH="$PWD/build/ios.xcarchive"
         EXPORT_PATH="$PWD/build/ios-export"
         
-        # First, build the app to ensure everything compiles
-        echo "Building iOS app..."
-        set -o pipefail
-        if ! xcodebuild build \
-          -project "$XCODE_PROJECT" \
-          -scheme "$SCHEME" \
-          -configuration Release \
-          CODE_SIGN_STYLE=Manual \
-          CODE_SIGN_IDENTITY="Apple Distribution" \
-          PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_UUID" \
-          DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" 2>&1 | tee /tmp/xcodebuild.log | xcbeautify; then
-          echo "Build failed. Full output:"
-          cat /tmp/xcodebuild.log
-          exit 1
-        fi
+        # The Rust library is already built above and copied to the expected location
+        # Skip the build step and go straight to archive, which will build if needed
+        # The archive command will build the app, but we've pre-built the Rust code
+        echo "Pre-built Rust library is ready, proceeding to archive step..."
         
-        # Now archive the app with explicit signing settings
-        echo "Archiving iOS app..."
+        # Archive the app - this will build everything including the Rust code
+        # But since we've pre-built the Rust library, the build script should find it
+        echo "Archiving iOS app (this will build if needed)..."
+        
+        # Set environment variables to prevent Tauri dev server connection
+        export TAURI_SKIP_DEV_SERVER=1
+        export CI=true
+        export RELEASE_BUILD=true
+        
+        set -o pipefail
         if ! xcodebuild archive \
           -project "$XCODE_PROJECT" \
           -scheme "$SCHEME" \
@@ -210,7 +257,8 @@ jobs:
           CODE_SIGN_STYLE=Manual \
           CODE_SIGN_IDENTITY="Apple Distribution" \
           PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_UUID" \
-          DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" 2>&1 | tee /tmp/xcodebuild-archive.log | xcbeautify; then
+          DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
+          2>&1 | tee /tmp/xcodebuild-archive.log | xcbeautify; then
           echo "Archive failed. Full output:"
           cat /tmp/xcodebuild-archive.log
           exit 1
