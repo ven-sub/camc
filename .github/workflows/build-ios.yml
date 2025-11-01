@@ -90,11 +90,10 @@ jobs:
         else
           echo "iOS project already exists, skipping init"
         fi
-      
+
     - name: Configure Xcode Project for Manual Signing
-      env:
-        PROVISIONING_PROFILE_UUID: ${{ env.PROVISIONING_PROFILE_UUID }}
       run: |
+        PROVISIONING_PROFILE_UUID="${{ env.PROVISIONING_PROFILE_UUID }}"
         # Update Xcode project to use manual code signing
         XCODE_PROJECT="src-tauri/gen/apple/circuit-assistant-mobile-companion.xcodeproj"
         PROJECT_FILE="$XCODE_PROJECT/project.pbxproj"
@@ -120,9 +119,7 @@ jobs:
           sed -i '' "s/PROVISIONING_PROFILE_SPECIFIER = .*/PROVISIONING_PROFILE_SPECIFIER = $PROVISIONING_PROFILE_UUID;/g" "$PROJECT_FILE"
         else
           # Add PROVISIONING_PROFILE_SPECIFIER after CODE_SIGN_IDENTITY
-          sed -i '' "/CODE_SIGN_IDENTITY = \"Apple Distribution\";/a\\
-						PROVISIONING_PROFILE_SPECIFIER = $PROVISIONING_PROFILE_UUID;
-" "$PROJECT_FILE"
+          perl -i -pe "s/(CODE_SIGN_IDENTITY = \"Apple Distribution\";)/\$1\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = $PROVISIONING_PROFILE_UUID;/" "$PROJECT_FILE"
         fi
         
         echo "Updated Xcode project for manual signing with profile: $PROVISIONING_PROFILE_UUID"
