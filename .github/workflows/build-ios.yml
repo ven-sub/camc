@@ -143,27 +143,22 @@ jobs:
           # Create a wrapper script that checks if libapp.a exists before calling Tauri
           WRAPPER_DIR="$(dirname "$PROJECT_FILE")"
           WRAPPER_SCRIPT="$WRAPPER_DIR/build_rust_wrapper.sh"
-          cat > "$WRAPPER_SCRIPT" << WRAPPEREOF
-#!/bin/bash
-# Wrapper script that skips Tauri CLI if library is already built
-# Get the absolute path to the project directory
-PROJECT_DIR="$WRAPPER_DIR"
-LIB_PATH_RELEASE="\$PROJECT_DIR/Externals/arm64/Release/libapp.a"
-LIB_PATH_DEBUG="\$PROJECT_DIR/Externals/arm64/Debug/libapp.a"
-
-# Check if library exists for current configuration
-if [ "\${CONFIGURATION}" = "Release" ] && [ -f "\$LIB_PATH_RELEASE" ]; then
-  echo "Pre-built Rust library found at \$LIB_PATH_RELEASE, skipping Tauri build script"
-  exit 0
-elif [ "\${CONFIGURATION}" = "Debug" ] && [ -f "\$LIB_PATH_DEBUG" ]; then
-  echo "Pre-built Rust library found at \$LIB_PATH_DEBUG, skipping Tauri build script"
-  exit 0
-fi
-
-# Library not found, run original Tauri command
-cd "$PWD"
-exec npm run -- tauri ios xcode-script "\$@"
-WRAPPEREOF
+          
+          # Write the wrapper script using printf to avoid YAML parsing issues
+          printf '#!/bin/bash\n' > "$WRAPPER_SCRIPT"
+          printf '# Wrapper script that skips Tauri CLI if library is already built\n' >> "$WRAPPER_SCRIPT"
+          printf 'PROJECT_DIR="$(dirname "${BASH_SOURCE[0]}")"\n' >> "$WRAPPER_SCRIPT"
+          printf 'LIB_PATH_RELEASE="$PROJECT_DIR/Externals/arm64/Release/libapp.a"\n' >> "$WRAPPER_SCRIPT"
+          printf 'LIB_PATH_DEBUG="$PROJECT_DIR/Externals/arm64/Debug/libapp.a"\n' >> "$WRAPPER_SCRIPT"
+          printf 'if [ "${CONFIGURATION}" = "Release" ] && [ -f "$LIB_PATH_RELEASE" ]; then\n' >> "$WRAPPER_SCRIPT"
+          printf '  echo "Pre-built Rust library found, skipping Tauri build script"\n' >> "$WRAPPER_SCRIPT"
+          printf '  exit 0\n' >> "$WRAPPER_SCRIPT"
+          printf 'elif [ "${CONFIGURATION}" = "Debug" ] && [ -f "$LIB_PATH_DEBUG" ]; then\n' >> "$WRAPPER_SCRIPT"
+          printf '  echo "Pre-built Rust library found, skipping Tauri build script"\n' >> "$WRAPPER_SCRIPT"
+          printf '  exit 0\n' >> "$WRAPPER_SCRIPT"
+          printf 'fi\n' >> "$WRAPPER_SCRIPT"
+          printf 'cd "$(dirname "$PROJECT_DIR")"\n' >> "$WRAPPER_SCRIPT"
+          printf 'exec npm run -- tauri ios xcode-script "$@"\n' >> "$WRAPPER_SCRIPT"
           chmod +x "$WRAPPER_SCRIPT"
           
           # Update the project file to use the wrapper script
@@ -193,15 +188,7 @@ WRAPPEREOF
         mkdir -p gen/apple/Externals/arm64/Debug
         cp target/aarch64-apple-ios/release/libcircuit_assistant_mobile_companion.a gen/apple/Externals/arm64/Debug/libapp.a
         
-        # Create a dummy script that just exits successfully to replace the Tauri build script
-        # This avoids the dev server connection issue
-        cat > gen/apple/build_rust_stub.sh << 'EOF'
-#!/bin/sh
-# Stub script - Rust library is pre-built
-echo "Using pre-built Rust library"
-exit 0
-EOF
-        chmod +x gen/apple/build_rust_stub.sh
+        # Skip - the wrapper script handles this now
         cd ..
         
         # Create ExportOptions.plist for App Store distribution
