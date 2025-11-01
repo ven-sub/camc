@@ -145,10 +145,13 @@ jobs:
         PROVISIONING_PROFILE_UUID: ${{ env.PROVISIONING_PROFILE_UUID }}
         DEVELOPMENT_TEAM: ${{ env.DEVELOPMENT_TEAM }}
       run: |
-        # Build Rust library first (this is what Tauri iOS build does internally)
-        # We'll skip the full iOS build and do the archive ourselves
+        # Build Rust library first and ensure it's in the expected location
         cd src-tauri
-        cargo build --target aarch64-apple-ios --release || echo "Rust build may have warnings but continuing..."
+        cargo build --target aarch64-apple-ios --release
+        
+        # Ensure the library is in the location Tauri expects
+        mkdir -p gen/apple/Externals/arm64/Release
+        cp target/aarch64-apple-ios/release/libcircuit_assistant_mobile_companion.a gen/apple/Externals/arm64/Release/libapp.a || true
         cd ..
         
         # Create ExportOptions.plist for App Store distribution
@@ -181,8 +184,25 @@ jobs:
         ARCHIVE_PATH="$PWD/build/ios.xcarchive"
         EXPORT_PATH="$PWD/build/ios-export"
         
-        # Archive the app with explicit signing settings
-        xcodebuild archive \
+        # First, build the app to ensure everything compiles
+        echo "Building iOS app..."
+        set -o pipefail
+        if ! xcodebuild build \
+          -project "$XCODE_PROJECT" \
+          -scheme "$SCHEME" \
+          -configuration Release \
+          CODE_SIGN_STYLE=Manual \
+          CODE_SIGN_IDENTITY="Apple Distribution" \
+          PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_UUID" \
+          DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" 2>&1 | tee /tmp/xcodebuild.log | xcbeautify; then
+          echo "Build failed. Full output:"
+          cat /tmp/xcodebuild.log
+          exit 1
+        fi
+        
+        # Now archive the app with explicit signing settings
+        echo "Archiving iOS app..."
+        if ! xcodebuild archive \
           -project "$XCODE_PROJECT" \
           -scheme "$SCHEME" \
           -configuration Release \
@@ -190,8 +210,18 @@ jobs:
           CODE_SIGN_STYLE=Manual \
           CODE_SIGN_IDENTITY="Apple Distribution" \
           PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_UUID" \
-          DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
-          | xcbeautify || cat
+          DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" 2>&1 | tee /tmp/xcodebuild-archive.log | xcbeautify; then
+          echo "Archive failed. Full output:"
+          cat /tmp/xcodebuild-archive.log
+          exit 1
+        fi
+        
+        # Verify archive was created
+        if [ ! -d "$ARCHIVE_PATH" ]; then
+          echo "Error: Archive was not created at $ARCHIVE_PATH"
+          exit 1
+        fi
+        echo "Archive created successfully at $ARCHIVE_PATH"
         
         # Export IPA for App Store
         xcodebuild -exportArchive \

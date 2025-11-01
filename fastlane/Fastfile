@@ -26,12 +26,16 @@ platform :ios do
       )
     end
     
+    # Skip precheck validation (not compatible with API keys for IAP checks)
+    ENV["FASTLANE_SKIP_PRECHECK"] = "1"
+    
     deliver(
       skip_screenshots: true,
       skip_metadata: true,
       skip_app_version_update: true,
       force: true,
-      submit_for_review: false
+      submit_for_review: false,
+      skip_precheck: true
     )
   end
 end
@@ -60,12 +64,16 @@ platform :mac do
       )
     end
     
+    # Skip precheck validation (not compatible with API keys for IAP checks)
+    ENV["FASTLANE_SKIP_PRECHECK"] = "1"
+    
     deliver(
       skip_screenshots: true,
       skip_metadata: true,
       skip_app_version_update: true,
       force: true,
-      submit_for_review: false
+      submit_for_review: false,
+      skip_precheck: true
     )
   end
 end
