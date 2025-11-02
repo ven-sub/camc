@@ -167,11 +167,17 @@ jobs:
           
           # Write the wrapper script using printf to avoid YAML parsing issues
           printf '#!/bin/bash\n' > "$WRAPPER_SCRIPT"
-          printf 'set -e\n' >> "$WRAPPER_SCRIPT"
           printf '# Wrapper script to set CI environment variables for Tauri build\n' >> "$WRAPPER_SCRIPT"
           printf '# Output to stderr so it shows up in Xcode build output\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "=== Wrapper Script: Setting CI environment and running Tauri build ===" >&2\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "CONFIGURATION=${CONFIGURATION}" >&2\n' >> "$WRAPPER_SCRIPT"
+          printf '# Use set -e but with explicit error handling\n' >> "$WRAPPER_SCRIPT"
+          printf 'set -e\n' >> "$WRAPPER_SCRIPT"
+          printf 'set -x\n' >> "$WRAPPER_SCRIPT"
+          printf 'exec >&2\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "=== Wrapper Script Started === $(date)"\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "Script location: ${BASH_SOURCE[0]}"\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "SRCROOT=${SRCROOT}"\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "CONFIGURATION=${CONFIGURATION}"\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "PWD=$(pwd)"\n' >> "$WRAPPER_SCRIPT"
           printf '\n' >> "$WRAPPER_SCRIPT"
           printf '# Set environment variables to prevent dev server connection in CI\n' >> "$WRAPPER_SCRIPT"
           printf 'export TAURI_SKIP_DEV_SERVER=1\n' >> "$WRAPPER_SCRIPT"
@@ -181,20 +187,41 @@ jobs:
           printf '# Create dummy dev server addr file to prevent Tauri CLI panic\n' >> "$WRAPPER_SCRIPT"
           printf '# Tauri CLI tries to read this file even with TAURI_SKIP_DEV_SERVER=1\n' >> "$WRAPPER_SCRIPT"
           printf 'SERVER_ADDR_FILE="${TMPDIR:-/tmp}/org.circuitassistant.camc-server-addr"\n' >> "$WRAPPER_SCRIPT"
-          printf 'mkdir -p "$(dirname "$SERVER_ADDR_FILE")"\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "127.0.0.1:0" > "$SERVER_ADDR_FILE" || echo "Warning: Could not create server addr file" >&2\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "Creating dev server addr file at: $SERVER_ADDR_FILE"\n' >> "$WRAPPER_SCRIPT"
+          printf 'mkdir -p "$(dirname "$SERVER_ADDR_FILE")" || { echo "ERROR: Failed to create directory for server addr file"; exit 1; }\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "127.0.0.1:0" > "$SERVER_ADDR_FILE" || { echo "ERROR: Failed to create server addr file"; exit 1; }\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "Created server addr file: $(cat "$SERVER_ADDR_FILE")"\n' >> "$WRAPPER_SCRIPT"
           printf '\n' >> "$WRAPPER_SCRIPT"
           printf '# Get absolute path to the project root (where package.json is)\n' >> "$WRAPPER_SCRIPT"
           printf 'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n' >> "$WRAPPER_SCRIPT"
           printf 'PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "Project root: $PROJECT_ROOT" >&2\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "Project root: $PROJECT_ROOT"\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "Checking if project root exists..."\n' >> "$WRAPPER_SCRIPT"
+          printf 'if [ ! -d "$PROJECT_ROOT" ]; then\n' >> "$WRAPPER_SCRIPT"
+          printf '  echo "ERROR: Project root does not exist: $PROJECT_ROOT"\n' >> "$WRAPPER_SCRIPT"
+          printf '  exit 1\n' >> "$WRAPPER_SCRIPT"
+          printf 'fi\n' >> "$WRAPPER_SCRIPT"
           printf '\n' >> "$WRAPPER_SCRIPT"
           printf '# Always run Tauri build to ensure iOS FFI exports are generated\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "=== Running Tauri build to generate iOS FFI exports ===" >&2\n' >> "$WRAPPER_SCRIPT"
-          printf 'cd "$PROJECT_ROOT"\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "=== Running Tauri build to generate iOS FFI exports ==="\n' >> "$WRAPPER_SCRIPT"
+          printf 'cd "$PROJECT_ROOT" || { echo "ERROR: Failed to cd to $PROJECT_ROOT"; exit 1; }\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "Current directory: $(pwd)"\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "Running: npm run -- tauri ios xcode-script $*"\n' >> "$WRAPPER_SCRIPT"
           printf 'exec npm run -- tauri ios xcode-script "$@"\n' >> "$WRAPPER_SCRIPT"
           
           chmod +x "$WRAPPER_SCRIPT"
+          
+          # Verify the script was created and is executable
+          if [ ! -f "$WRAPPER_SCRIPT" ]; then
+            echo "ERROR: Wrapper script was not created at $WRAPPER_SCRIPT"
+            exit 1
+          fi
+          if [ ! -x "$WRAPPER_SCRIPT" ]; then
+            echo "ERROR: Wrapper script is not executable"
+            exit 1
+          fi
+          echo "✓ Verified: Wrapper script created at $WRAPPER_SCRIPT"
+          echo "Script size: $(wc -l < "$WRAPPER_SCRIPT") lines"
           
           # Update the project file to use the wrapper script
           # Use ${SRCROOT} which Xcode provides - it points to the directory containing the .xcodeproj
@@ -208,10 +235,18 @@ jobs:
           # Verify the replacement worked
           if grep -q "\${SRCROOT}/build_rust_wrapper.sh" "$PROJECT_FILE"; then
             echo "✓ Verified: Project file contains wrapper script path"
+            # Show the actual line to verify it looks correct
+            echo "Script line in project file:"
+            grep "\${SRCROOT}/build_rust_wrapper.sh" "$PROJECT_FILE" | head -1
           else
             echo "⚠ Warning: Project file replacement might have failed"
             echo "Checking for remaining npm command references:"
-            grep -n "tauri ios xcode-script" "$PROJECT_FILE" || echo "No npm command found (good)"
+            if grep -n "tauri ios xcode-script" "$PROJECT_FILE"; then
+              echo "ERROR: npm command still found in project file - sed replacement failed!"
+              exit 1
+            else
+              echo "No npm command found (replacement may have worked with different pattern)"
+            fi
           fi
         fi
       
