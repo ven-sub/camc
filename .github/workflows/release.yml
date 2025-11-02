@@ -14,6 +14,7 @@ jobs:
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
+    if: false  # TEMPORARILY DISABLED - iOS only builds
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     
@@ -35,6 +36,7 @@ jobs:
   build-desktop-platforms:
     name: Build Desktop Platforms
     needs: create-release
+    if: false  # TEMPORARILY DISABLED - iOS only builds
     strategy:
       matrix:
         include:

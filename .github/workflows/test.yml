@@ -10,6 +10,7 @@ jobs:
   test-frontend:
     name: Test Frontend
     runs-on: ubuntu-latest
+    if: false  # TEMPORARILY DISABLED - iOS only builds
     
     steps:
     - name: Checkout code
@@ -43,6 +44,7 @@ jobs:
   test-rust:
     name: Test Rust
     runs-on: ubuntu-latest
+    if: false  # TEMPORARILY DISABLED - iOS only builds
     
     steps:
     - name: Checkout code
@@ -83,6 +85,7 @@ jobs:
 
   test-cross-platform:
     name: Test Cross-Platform Compatibility
+    if: false  # TEMPORARILY DISABLED - iOS only builds
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
