@@ -229,7 +229,17 @@ jobs:
           # Replace the npm command with the wrapper script path
           # ${SRCROOT} is an Xcode variable that points to the directory containing the .xcodeproj
           # In bash double quotes, \${SRCROOT} becomes ${SRCROOT} which is what we want in the file
-          sed -i '' "s|npm run -- tauri ios xcode-script|\${SRCROOT}/build_rust_wrapper.sh|g" "$PROJECT_FILE"
+          # Need to match the full shellScript line pattern in project.pbxproj
+          # Pattern: shellScript = "npm run -- tauri ios xcode-script [args...]";
+          # Replace with: shellScript = "${SRCROOT}/build_rust_wrapper.sh [args...]";
+          # Use a more specific pattern that captures everything after the npm command
+          if grep -q "npm run -- tauri ios xcode-script" "$PROJECT_FILE"; then
+            # Use perl for more reliable multiline/pattern matching
+            perl -i -pe 's|(shellScript = ")npm run -- tauri ios xcode-script |$1\${SRCROOT}/build_rust_wrapper.sh |g' "$PROJECT_FILE"
+            echo "Updated build script using perl replacement"
+          else
+            echo "Note: npm command not found in project file (may have been already replaced)"
+          fi
           echo "Updated build script to use wrapper at: \${SRCROOT}/build_rust_wrapper.sh"
           
           # Verify the replacement worked
@@ -261,6 +271,33 @@ jobs:
         # Ensure assets directory exists (Xcode project expects it)
         mkdir -p src-tauri/gen/apple/assets
         echo "Ensured assets directory exists"
+        
+        # Re-apply wrapper script modification to project file
+        # Tauri might regenerate the project file, so we need to ensure our changes are in place
+        XCODE_PROJECT="src-tauri/gen/apple/circuit-assistant-mobile-companion.xcodeproj"
+        PROJECT_FILE="$XCODE_PROJECT/project.pbxproj"
+        WRAPPER_SCRIPT="src-tauri/gen/apple/build_rust_wrapper.sh"
+        
+        if [ -f "$PROJECT_FILE" ] && [ -f "$WRAPPER_SCRIPT" ]; then
+          echo "Re-applying wrapper script modification to project file..."
+          if grep -q "npm run -- tauri ios xcode-script" "$PROJECT_FILE"; then
+            perl -i -pe 's|(shellScript = ")npm run -- tauri ios xcode-script |$1\${SRCROOT}/build_rust_wrapper.sh |g' "$PROJECT_FILE"
+            echo "✓ Re-applied wrapper script to project file"
+          else
+            echo "✓ Project file already uses wrapper script"
+          fi
+          
+          # Verify one more time
+          if grep -q "\${SRCROOT}/build_rust_wrapper.sh" "$PROJECT_FILE"; then
+            echo "✓ Final verification: Project file contains wrapper script"
+          else
+            echo "⚠ WARNING: Project file does not contain wrapper script path!"
+            echo "This may cause the build to fail. Showing project file line:"
+            grep -n "shellScript" "$PROJECT_FILE" | head -1 || echo "No shellScript found"
+          fi
+        else
+          echo "⚠ Warning: Project file or wrapper script not found, skipping re-application"
+        fi
         
         # Note: We no longer pre-build Rust libraries here
         # Tauri build will run during Xcode archive phase (via wrapper script)
