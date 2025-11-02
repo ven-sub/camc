@@ -165,9 +165,6 @@ jobs:
           WRAPPER_DIR="$(dirname "$(dirname "$PROJECT_FILE")")"
           WRAPPER_SCRIPT="$WRAPPER_DIR/build_rust_wrapper.sh"
           
-          # Get the project root (where package.json is) for absolute path resolution
-          PROJECT_ROOT="$(cd "$(dirname "$PROJECT_FILE")/../../.." && pwd)"
-          
           # Write the wrapper script using printf to avoid YAML parsing issues
           printf '#!/bin/bash\n' > "$WRAPPER_SCRIPT"
           printf 'set -e\n' >> "$WRAPPER_SCRIPT"
@@ -180,6 +177,12 @@ jobs:
           printf 'export TAURI_SKIP_DEV_SERVER=1\n' >> "$WRAPPER_SCRIPT"
           printf 'export CI=true\n' >> "$WRAPPER_SCRIPT"
           printf 'export RELEASE_BUILD=true\n' >> "$WRAPPER_SCRIPT"
+          printf '\n' >> "$WRAPPER_SCRIPT"
+          printf '# Create dummy dev server addr file to prevent Tauri CLI panic\n' >> "$WRAPPER_SCRIPT"
+          printf '# Tauri CLI tries to read this file even with TAURI_SKIP_DEV_SERVER=1\n' >> "$WRAPPER_SCRIPT"
+          printf 'SERVER_ADDR_FILE="${TMPDIR:-/tmp}/org.circuitassistant.camc-server-addr"\n' >> "$WRAPPER_SCRIPT"
+          printf 'mkdir -p "$(dirname "$SERVER_ADDR_FILE")"\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "127.0.0.1:0" > "$SERVER_ADDR_FILE" || echo "Warning: Could not create server addr file" >&2\n' >> "$WRAPPER_SCRIPT"
           printf '\n' >> "$WRAPPER_SCRIPT"
           printf '# Get absolute path to the project root (where package.json is)\n' >> "$WRAPPER_SCRIPT"
           printf 'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n' >> "$WRAPPER_SCRIPT"
