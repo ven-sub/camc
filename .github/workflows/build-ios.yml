@@ -142,31 +142,49 @@ jobs:
         # This prevents the dev server connection error in CI
         if grep -q "tauri ios xcode-script" "$PROJECT_FILE"; then
           # Create a wrapper script that checks if libapp.a exists before calling Tauri
+          # Place it next to the project file so we can use a simple relative path
           WRAPPER_DIR="$(dirname "$PROJECT_FILE")"
           WRAPPER_SCRIPT="$WRAPPER_DIR/build_rust_wrapper.sh"
           
+          # Get the project root (where package.json is) for absolute path resolution
+          PROJECT_ROOT="$(cd "$(dirname "$PROJECT_FILE")/../../.." && pwd)"
+          
           # Write the wrapper script using printf to avoid YAML parsing issues
           printf '#!/bin/bash\n' > "$WRAPPER_SCRIPT"
-          printf '# Wrapper script that skips Tauri CLI if library is already built\n' >> "$WRAPPER_SCRIPT"
-          printf 'PROJECT_DIR="$(dirname "${BASH_SOURCE[0]}")"\n' >> "$WRAPPER_SCRIPT"
-          printf 'LIB_PATH_RELEASE="$PROJECT_DIR/Externals/arm64/Release/libapp.a"\n' >> "$WRAPPER_SCRIPT"
-          printf 'LIB_PATH_DEBUG="$PROJECT_DIR/Externals/arm64/Debug/libapp.a"\n' >> "$WRAPPER_SCRIPT"
+          printf 'set -e\n' >> "$WRAPPER_SCRIPT"
+          printf '# Get absolute path to the project root (where package.json is)\n' >> "$WRAPPER_SCRIPT"
+          printf 'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n' >> "$WRAPPER_SCRIPT"
+          printf 'PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"\n' >> "$WRAPPER_SCRIPT"
+          printf 'APPLE_DIR="$PROJECT_ROOT/src-tauri/gen/apple"\n' >> "$WRAPPER_SCRIPT"
+          printf '\n' >> "$WRAPPER_SCRIPT"
+          printf '# Check for pre-built libraries\n' >> "$WRAPPER_SCRIPT"
+          printf 'LIB_PATH_RELEASE="$APPLE_DIR/Externals/arm64/Release/libapp.a"\n' >> "$WRAPPER_SCRIPT"
+          printf 'LIB_PATH_DEBUG="$APPLE_DIR/Externals/arm64/Debug/libapp.a"\n' >> "$WRAPPER_SCRIPT"
+          printf '\n' >> "$WRAPPER_SCRIPT"
           printf 'if [ "${CONFIGURATION}" = "Release" ] && [ -f "$LIB_PATH_RELEASE" ]; then\n' >> "$WRAPPER_SCRIPT"
-          printf '  echo "Pre-built Rust library found, skipping Tauri build script"\n' >> "$WRAPPER_SCRIPT"
+          printf '  echo "Pre-built Rust library found at $LIB_PATH_RELEASE, skipping Tauri build script"\n' >> "$WRAPPER_SCRIPT"
           printf '  exit 0\n' >> "$WRAPPER_SCRIPT"
           printf 'elif [ "${CONFIGURATION}" = "Debug" ] && [ -f "$LIB_PATH_DEBUG" ]; then\n' >> "$WRAPPER_SCRIPT"
-          printf '  echo "Pre-built Rust library found, skipping Tauri build script"\n' >> "$WRAPPER_SCRIPT"
+          printf '  echo "Pre-built Rust library found at $LIB_PATH_DEBUG, skipping Tauri build script"\n' >> "$WRAPPER_SCRIPT"
           printf '  exit 0\n' >> "$WRAPPER_SCRIPT"
           printf 'fi\n' >> "$WRAPPER_SCRIPT"
-          printf 'cd "$(dirname "$PROJECT_DIR")"\n' >> "$WRAPPER_SCRIPT"
+          printf '\n' >> "$WRAPPER_SCRIPT"
+          printf '# If library not found, fall back to normal Tauri build\n' >> "$WRAPPER_SCRIPT"
+          printf 'cd "$PROJECT_ROOT"\n' >> "$WRAPPER_SCRIPT"
           printf 'exec npm run -- tauri ios xcode-script "$@"\n' >> "$WRAPPER_SCRIPT"
+          
           chmod +x "$WRAPPER_SCRIPT"
           
           # Update the project file to use the wrapper script
-          # Escape the path for sed (use absolute path)
-          ESCAPED_WRAPPER=$(echo "$WRAPPER_SCRIPT" | sed 's/\//\\\//g')
-          sed -i '' "s|npm run -- tauri ios xcode-script|$ESCAPED_WRAPPER|g" "$PROJECT_FILE"
-          echo "Updated build script to use wrapper that checks for pre-built library"
+          # Use the wrapper script with path relative to project file location
+          # Since wrapper is in same dir as project.pbxproj, we can use just the filename
+          # But Xcode runs from project root, so we need the full relative path
+          RELATIVE_WRAPPER="src-tauri/gen/apple/circuit-assistant-mobile-companion.xcodeproj/build_rust_wrapper.sh"
+          
+          # Escape the path for sed replacement
+          ESCAPED_WRAPPER=$(printf '%s\n' "$RELATIVE_WRAPPER" | sed 's/[[\.*^$()+?{|]/\\&/g' | sed 's|/|\\/|g')
+          sed -i '' "s|npm run -- tauri ios xcode-script|$RELATIVE_WRAPPER|g" "$PROJECT_FILE"
+          echo "Updated build script to use wrapper: $RELATIVE_WRAPPER"
         fi
       
     - name: Build iOS IPA for TestFlight
