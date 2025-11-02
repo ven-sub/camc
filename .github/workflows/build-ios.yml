@@ -160,16 +160,17 @@ jobs:
           printf '#!/bin/bash\n' > "$WRAPPER_SCRIPT"
           printf 'set -e\n' >> "$WRAPPER_SCRIPT"
           printf '# Wrapper script to skip Tauri build if pre-built Rust library exists\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "=== Wrapper Script Started ==="\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "CONFIGURATION=${CONFIGURATION}"\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "BUILD_DIR=${BUILD_DIR}"\n' >> "$WRAPPER_SCRIPT"
+          printf '# Output to stderr so it shows up in Xcode build output\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "=== Wrapper Script Started ===" >&2\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "CONFIGURATION=${CONFIGURATION}" >&2\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "BUILD_DIR=${BUILD_DIR}" >&2\n' >> "$WRAPPER_SCRIPT"
           printf '\n' >> "$WRAPPER_SCRIPT"
           printf '# Get absolute path to the project root (where package.json is)\n' >> "$WRAPPER_SCRIPT"
           printf 'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n' >> "$WRAPPER_SCRIPT"
           printf 'PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"\n' >> "$WRAPPER_SCRIPT"
           printf 'APPLE_DIR="$PROJECT_ROOT/src-tauri/gen/apple"\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "Script dir: $SCRIPT_DIR"\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "Project root: $PROJECT_ROOT"\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "Script dir: $SCRIPT_DIR" >&2\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "Project root: $PROJECT_ROOT" >&2\n' >> "$WRAPPER_SCRIPT"
           printf '\n' >> "$WRAPPER_SCRIPT"
           printf '# Check for pre-built libraries\n' >> "$WRAPPER_SCRIPT"
           printf 'LIB_PATH_RELEASE="$APPLE_DIR/Externals/arm64/Release/libapp.a"\n' >> "$WRAPPER_SCRIPT"
@@ -177,38 +178,38 @@ jobs:
           printf '\n' >> "$WRAPPER_SCRIPT"
           printf '# Check Release library\n' >> "$WRAPPER_SCRIPT"
           printf 'if [ -f "$LIB_PATH_RELEASE" ]; then\n' >> "$WRAPPER_SCRIPT"
-          printf '  echo "Release library exists: $LIB_PATH_RELEASE"\n' >> "$WRAPPER_SCRIPT"
+          printf '  echo "Release library exists: $LIB_PATH_RELEASE" >&2\n' >> "$WRAPPER_SCRIPT"
           printf 'else\n' >> "$WRAPPER_SCRIPT"
-          printf '  echo "Release library NOT found: $LIB_PATH_RELEASE"\n' >> "$WRAPPER_SCRIPT"
+          printf '  echo "Release library NOT found: $LIB_PATH_RELEASE" >&2\n' >> "$WRAPPER_SCRIPT"
           printf 'fi\n' >> "$WRAPPER_SCRIPT"
           printf '\n' >> "$WRAPPER_SCRIPT"
           printf '# Check Debug library\n' >> "$WRAPPER_SCRIPT"
           printf 'if [ -f "$LIB_PATH_DEBUG" ]; then\n' >> "$WRAPPER_SCRIPT"
-          printf '  echo "Debug library exists: $LIB_PATH_DEBUG"\n' >> "$WRAPPER_SCRIPT"
+          printf '  echo "Debug library exists: $LIB_PATH_DEBUG" >&2\n' >> "$WRAPPER_SCRIPT"
           printf 'else\n' >> "$WRAPPER_SCRIPT"
-          printf '  echo "Debug library NOT found: $LIB_PATH_DEBUG"\n' >> "$WRAPPER_SCRIPT"
+          printf '  echo "Debug library NOT found: $LIB_PATH_DEBUG" >&2\n' >> "$WRAPPER_SCRIPT"
           printf 'fi\n' >> "$WRAPPER_SCRIPT"
           printf '\n' >> "$WRAPPER_SCRIPT"
           printf '# Use library based on CONFIGURATION, or default to Release if unclear\n' >> "$WRAPPER_SCRIPT"
           printf 'if [ "${CONFIGURATION}" = "Release" ] && [ -f "$LIB_PATH_RELEASE" ]; then\n' >> "$WRAPPER_SCRIPT"
-          printf '  echo "=== Using Release library, skipping Tauri build ==="\n' >> "$WRAPPER_SCRIPT"
+          printf '  echo "=== Using Release library, skipping Tauri build ===" >&2\n' >> "$WRAPPER_SCRIPT"
           printf '  exit 0\n' >> "$WRAPPER_SCRIPT"
           printf 'elif [ "${CONFIGURATION}" = "Debug" ] && [ -f "$LIB_PATH_DEBUG" ]; then\n' >> "$WRAPPER_SCRIPT"
-          printf '  echo "=== Using Debug library, skipping Tauri build ==="\n' >> "$WRAPPER_SCRIPT"
+          printf '  echo "=== Using Debug library, skipping Tauri build ===" >&2\n' >> "$WRAPPER_SCRIPT"
           printf '  exit 0\n' >> "$WRAPPER_SCRIPT"
           printf 'elif [ -z "${CONFIGURATION}" ] || ([ "${CONFIGURATION}" != "Release" ] && [ "${CONFIGURATION}" != "Debug" ]); then\n' >> "$WRAPPER_SCRIPT"
           printf '  # CONFIGURATION is not set or invalid, try Release first, then Debug\n' >> "$WRAPPER_SCRIPT"
           printf '  if [ -f "$LIB_PATH_RELEASE" ]; then\n' >> "$WRAPPER_SCRIPT"
-          printf '    echo "=== CONFIGURATION not set, using Release library, skipping Tauri build ==="\n' >> "$WRAPPER_SCRIPT"
+          printf '    echo "=== CONFIGURATION not set, using Release library, skipping Tauri build ===" >&2\n' >> "$WRAPPER_SCRIPT"
           printf '    exit 0\n' >> "$WRAPPER_SCRIPT"
           printf '  elif [ -f "$LIB_PATH_DEBUG" ]; then\n' >> "$WRAPPER_SCRIPT"
-          printf '    echo "=== CONFIGURATION not set, using Debug library, skipping Tauri build ==="\n' >> "$WRAPPER_SCRIPT"
+          printf '    echo "=== CONFIGURATION not set, using Debug library, skipping Tauri build ===" >&2\n' >> "$WRAPPER_SCRIPT"
           printf '    exit 0\n' >> "$WRAPPER_SCRIPT"
           printf '  fi\n' >> "$WRAPPER_SCRIPT"
           printf 'fi\n' >> "$WRAPPER_SCRIPT"
           printf '\n' >> "$WRAPPER_SCRIPT"
           printf '# If library not found, fall back to normal Tauri build\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "=== No pre-built library found, running Tauri build script ==="\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "=== No pre-built library found, running Tauri build script ===" >&2\n' >> "$WRAPPER_SCRIPT"
           printf 'cd "$PROJECT_ROOT"\n' >> "$WRAPPER_SCRIPT"
           printf 'exec npm run -- tauri ios xcode-script "$@"\n' >> "$WRAPPER_SCRIPT"
           
@@ -222,6 +223,15 @@ jobs:
           # In bash double quotes, \${SRCROOT} becomes ${SRCROOT} which is what we want in the file
           sed -i '' "s|npm run -- tauri ios xcode-script|\${SRCROOT}/build_rust_wrapper.sh|g" "$PROJECT_FILE"
           echo "Updated build script to use wrapper at: \${SRCROOT}/build_rust_wrapper.sh"
+          
+          # Verify the replacement worked
+          if grep -q "\${SRCROOT}/build_rust_wrapper.sh" "$PROJECT_FILE"; then
+            echo "✓ Verified: Project file contains wrapper script path"
+          else
+            echo "⚠ Warning: Project file replacement might have failed"
+            echo "Checking for remaining npm command references:"
+            grep -n "tauri ios xcode-script" "$PROJECT_FILE" || echo "No npm command found (good)"
+          fi
         fi
       
     - name: Build iOS IPA for TestFlight
@@ -271,6 +281,10 @@ jobs:
         echo "Copied Debug library to gen/apple/Externals/arm64/Debug/libapp.a"
         
         cd ..
+        
+        # Ensure assets directory exists (Xcode project expects it)
+        mkdir -p src-tauri/gen/apple/assets
+        echo "Ensured assets directory exists"
         
         # Create ExportOptions.plist for App Store distribution
         mkdir -p build
