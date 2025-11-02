@@ -177,28 +177,43 @@ jobs:
         PROVISIONING_PROFILE_UUID: ${{ env.PROVISIONING_PROFILE_UUID }}
         DEVELOPMENT_TEAM: ${{ env.DEVELOPMENT_TEAM }}
       run: |
-        # Build Rust library first and ensure it's in the expected location
+        # Build Rust library for both Release and Debug to ensure we have it for any configuration
         cd src-tauri
+        
+        # Build Release version
+        echo "Building Rust library (Release)..."
         cargo build --target aarch64-apple-ios --release
         
-        # Find the actual library file (could have underscores or hyphens)
-        LIB_FILE=$(find target/aarch64-apple-ios/release -name "lib*.a" -type f | head -n 1)
-        if [ -z "$LIB_FILE" ]; then
+        # Find the Release library file
+        RELEASE_LIB=$(find target/aarch64-apple-ios/release -name "lib*.a" -type f | head -n 1)
+        if [ -z "$RELEASE_LIB" ]; then
           echo "Error: Could not find built Rust library in target/aarch64-apple-ios/release/"
           ls -la target/aarch64-apple-ios/release/ || echo "Directory does not exist"
           exit 1
         fi
-        echo "Found Rust library: $LIB_FILE"
+        echo "Found Release Rust library: $RELEASE_LIB"
         
-        # Ensure the library is in the location Tauri expects for Release builds
+        # Build Debug version (Xcode might use Debug configuration even when we specify Release)
+        echo "Building Rust library (Debug)..."
+        cargo build --target aarch64-apple-ios
+        
+        # Find the Debug library file
+        DEBUG_LIB=$(find target/aarch64-apple-ios/debug -name "lib*.a" -type f | head -n 1)
+        if [ -z "$DEBUG_LIB" ]; then
+          echo "Warning: Could not find Debug Rust library, using Release version for Debug builds"
+          DEBUG_LIB="$RELEASE_LIB"
+        else
+          echo "Found Debug Rust library: $DEBUG_LIB"
+        fi
+        
+        # Ensure the libraries are in the locations Tauri expects
         mkdir -p gen/apple/Externals/arm64/Release
-        cp "$LIB_FILE" gen/apple/Externals/arm64/Release/libapp.a
-        echo "Copied library to gen/apple/Externals/arm64/Release/libapp.a"
+        cp "$RELEASE_LIB" gen/apple/Externals/arm64/Release/libapp.a
+        echo "Copied Release library to gen/apple/Externals/arm64/Release/libapp.a"
         
-        # Also copy to debug location to satisfy any debug checks during build
         mkdir -p gen/apple/Externals/arm64/Debug
-        cp "$LIB_FILE" gen/apple/Externals/arm64/Debug/libapp.a
-        echo "Copied library to gen/apple/Externals/arm64/Debug/libapp.a"
+        cp "$DEBUG_LIB" gen/apple/Externals/arm64/Debug/libapp.a
+        echo "Copied Debug library to gen/apple/Externals/arm64/Debug/libapp.a"
         
         cd ..
         
