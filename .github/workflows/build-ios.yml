@@ -43,6 +43,16 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
+    
+    - name: Cache iOS project and built libraries
+      uses: actions/cache@v4
+      with:
+        path: |
+          src-tauri/gen/apple/
+          src-tauri/gen/ios/
+        key: ${{ runner.os }}-ios-project-${{ hashFiles('src-tauri/tauri.conf.json', 'src-tauri/Cargo.toml', 'package.json') }}
+        restore-keys: |
+          ${{ runner.os }}-ios-project-
           
     - name: Install dependencies
       run: npm ci
@@ -145,10 +155,11 @@ jobs:
         
         echo "Updated Xcode project for manual signing with profile: $PROVISIONING_PROFILE_UUID and team: $DEVELOPMENT_TEAM"
         
-        # Modify the build script to skip Tauri CLI if library already exists
-        # This prevents the dev server connection error in CI
+        # Modify the build script to set environment variables for CI
+        # We need Tauri build to run to generate iOS FFI exports (_start_app symbol)
+        # But we set env vars to prevent dev server connection issues
         if grep -q "tauri ios xcode-script" "$PROJECT_FILE"; then
-          # Create a wrapper script that checks if libapp.a exists before calling Tauri
+          # Create a wrapper script that sets CI environment variables before calling Tauri
           # ${SRCROOT} points to the directory containing the .xcodeproj (src-tauri/gen/apple/)
           # So we need to place the wrapper script there, not inside the .xcodeproj directory
           WRAPPER_DIR="$(dirname "$(dirname "$PROJECT_FILE")")"
@@ -160,57 +171,23 @@ jobs:
           # Write the wrapper script using printf to avoid YAML parsing issues
           printf '#!/bin/bash\n' > "$WRAPPER_SCRIPT"
           printf 'set -e\n' >> "$WRAPPER_SCRIPT"
-          printf '# Wrapper script to skip Tauri build if pre-built Rust library exists\n' >> "$WRAPPER_SCRIPT"
+          printf '# Wrapper script to set CI environment variables for Tauri build\n' >> "$WRAPPER_SCRIPT"
           printf '# Output to stderr so it shows up in Xcode build output\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "=== Wrapper Script Started ===" >&2\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "=== Wrapper Script: Setting CI environment and running Tauri build ===" >&2\n' >> "$WRAPPER_SCRIPT"
           printf 'echo "CONFIGURATION=${CONFIGURATION}" >&2\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "BUILD_DIR=${BUILD_DIR}" >&2\n' >> "$WRAPPER_SCRIPT"
+          printf '\n' >> "$WRAPPER_SCRIPT"
+          printf '# Set environment variables to prevent dev server connection in CI\n' >> "$WRAPPER_SCRIPT"
+          printf 'export TAURI_SKIP_DEV_SERVER=1\n' >> "$WRAPPER_SCRIPT"
+          printf 'export CI=true\n' >> "$WRAPPER_SCRIPT"
+          printf 'export RELEASE_BUILD=true\n' >> "$WRAPPER_SCRIPT"
           printf '\n' >> "$WRAPPER_SCRIPT"
           printf '# Get absolute path to the project root (where package.json is)\n' >> "$WRAPPER_SCRIPT"
           printf 'SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\n' >> "$WRAPPER_SCRIPT"
           printf 'PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"\n' >> "$WRAPPER_SCRIPT"
-          printf 'APPLE_DIR="$PROJECT_ROOT/src-tauri/gen/apple"\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "Script dir: $SCRIPT_DIR" >&2\n' >> "$WRAPPER_SCRIPT"
           printf 'echo "Project root: $PROJECT_ROOT" >&2\n' >> "$WRAPPER_SCRIPT"
           printf '\n' >> "$WRAPPER_SCRIPT"
-          printf '# Check for pre-built libraries\n' >> "$WRAPPER_SCRIPT"
-          printf 'LIB_PATH_RELEASE="$APPLE_DIR/Externals/arm64/Release/libapp.a"\n' >> "$WRAPPER_SCRIPT"
-          printf 'LIB_PATH_DEBUG="$APPLE_DIR/Externals/arm64/Debug/libapp.a"\n' >> "$WRAPPER_SCRIPT"
-          printf '\n' >> "$WRAPPER_SCRIPT"
-          printf '# Check Release library\n' >> "$WRAPPER_SCRIPT"
-          printf 'if [ -f "$LIB_PATH_RELEASE" ]; then\n' >> "$WRAPPER_SCRIPT"
-          printf '  echo "Release library exists: $LIB_PATH_RELEASE" >&2\n' >> "$WRAPPER_SCRIPT"
-          printf 'else\n' >> "$WRAPPER_SCRIPT"
-          printf '  echo "Release library NOT found: $LIB_PATH_RELEASE" >&2\n' >> "$WRAPPER_SCRIPT"
-          printf 'fi\n' >> "$WRAPPER_SCRIPT"
-          printf '\n' >> "$WRAPPER_SCRIPT"
-          printf '# Check Debug library\n' >> "$WRAPPER_SCRIPT"
-          printf 'if [ -f "$LIB_PATH_DEBUG" ]; then\n' >> "$WRAPPER_SCRIPT"
-          printf '  echo "Debug library exists: $LIB_PATH_DEBUG" >&2\n' >> "$WRAPPER_SCRIPT"
-          printf 'else\n' >> "$WRAPPER_SCRIPT"
-          printf '  echo "Debug library NOT found: $LIB_PATH_DEBUG" >&2\n' >> "$WRAPPER_SCRIPT"
-          printf 'fi\n' >> "$WRAPPER_SCRIPT"
-          printf '\n' >> "$WRAPPER_SCRIPT"
-          printf '# Use library based on CONFIGURATION, or default to Release if unclear\n' >> "$WRAPPER_SCRIPT"
-          printf 'if [ "${CONFIGURATION}" = "Release" ] && [ -f "$LIB_PATH_RELEASE" ]; then\n' >> "$WRAPPER_SCRIPT"
-          printf '  echo "=== Using Release library, skipping Tauri build ===" >&2\n' >> "$WRAPPER_SCRIPT"
-          printf '  exit 0\n' >> "$WRAPPER_SCRIPT"
-          printf 'elif [ "${CONFIGURATION}" = "Debug" ] && [ -f "$LIB_PATH_DEBUG" ]; then\n' >> "$WRAPPER_SCRIPT"
-          printf '  echo "=== Using Debug library, skipping Tauri build ===" >&2\n' >> "$WRAPPER_SCRIPT"
-          printf '  exit 0\n' >> "$WRAPPER_SCRIPT"
-          printf 'elif [ -z "${CONFIGURATION}" ] || ([ "${CONFIGURATION}" != "Release" ] && [ "${CONFIGURATION}" != "Debug" ]); then\n' >> "$WRAPPER_SCRIPT"
-          printf '  # CONFIGURATION is not set or invalid, try Release first, then Debug\n' >> "$WRAPPER_SCRIPT"
-          printf '  if [ -f "$LIB_PATH_RELEASE" ]; then\n' >> "$WRAPPER_SCRIPT"
-          printf '    echo "=== CONFIGURATION not set, using Release library, skipping Tauri build ===" >&2\n' >> "$WRAPPER_SCRIPT"
-          printf '    exit 0\n' >> "$WRAPPER_SCRIPT"
-          printf '  elif [ -f "$LIB_PATH_DEBUG" ]; then\n' >> "$WRAPPER_SCRIPT"
-          printf '    echo "=== CONFIGURATION not set, using Debug library, skipping Tauri build ===" >&2\n' >> "$WRAPPER_SCRIPT"
-          printf '    exit 0\n' >> "$WRAPPER_SCRIPT"
-          printf '  fi\n' >> "$WRAPPER_SCRIPT"
-          printf 'fi\n' >> "$WRAPPER_SCRIPT"
-          printf '\n' >> "$WRAPPER_SCRIPT"
-          printf '# If library not found, fall back to normal Tauri build\n' >> "$WRAPPER_SCRIPT"
-          printf 'echo "=== No pre-built library found, running Tauri build script ===" >&2\n' >> "$WRAPPER_SCRIPT"
+          printf '# Always run Tauri build to ensure iOS FFI exports are generated\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "=== Running Tauri build to generate iOS FFI exports ===" >&2\n' >> "$WRAPPER_SCRIPT"
           printf 'cd "$PROJECT_ROOT"\n' >> "$WRAPPER_SCRIPT"
           printf 'exec npm run -- tauri ios xcode-script "$@"\n' >> "$WRAPPER_SCRIPT"
           
@@ -243,49 +220,15 @@ jobs:
         PROVISIONING_PROFILE_UUID: ${{ env.PROVISIONING_PROFILE_UUID }}
         DEVELOPMENT_TEAM: ${{ env.DEVELOPMENT_TEAM }}
       run: |
-        # Build Rust library for both Release and Debug to ensure we have it for any configuration
-        cd src-tauri
-        
-        # Build Release version
-        echo "Building Rust library (Release)..."
-        cargo build --target aarch64-apple-ios --release
-        
-        # Find the Release library file
-        RELEASE_LIB=$(find target/aarch64-apple-ios/release -name "lib*.a" -type f | head -n 1)
-        if [ -z "$RELEASE_LIB" ]; then
-          echo "Error: Could not find built Rust library in target/aarch64-apple-ios/release/"
-          ls -la target/aarch64-apple-ios/release/ || echo "Directory does not exist"
-          exit 1
-        fi
-        echo "Found Release Rust library: $RELEASE_LIB"
-        
-        # Build Debug version (Xcode might use Debug configuration even when we specify Release)
-        echo "Building Rust library (Debug)..."
-        cargo build --target aarch64-apple-ios
-        
-        # Find the Debug library file
-        DEBUG_LIB=$(find target/aarch64-apple-ios/debug -name "lib*.a" -type f | head -n 1)
-        if [ -z "$DEBUG_LIB" ]; then
-          echo "Warning: Could not find Debug Rust library, using Release version for Debug builds"
-          DEBUG_LIB="$RELEASE_LIB"
-        else
-          echo "Found Debug Rust library: $DEBUG_LIB"
-        fi
-        
-        # Ensure the libraries are in the locations Tauri expects
-        mkdir -p gen/apple/Externals/arm64/Release
-        cp "$RELEASE_LIB" gen/apple/Externals/arm64/Release/libapp.a
-        echo "Copied Release library to gen/apple/Externals/arm64/Release/libapp.a"
-        
-        mkdir -p gen/apple/Externals/arm64/Debug
-        cp "$DEBUG_LIB" gen/apple/Externals/arm64/Debug/libapp.a
-        echo "Copied Debug library to gen/apple/Externals/arm64/Debug/libapp.a"
-        
-        cd ..
-        
         # Ensure assets directory exists (Xcode project expects it)
         mkdir -p src-tauri/gen/apple/assets
         echo "Ensured assets directory exists"
+        
+        # Note: We no longer pre-build Rust libraries here
+        # Tauri build will run during Xcode archive phase (via wrapper script)
+        # This ensures iOS FFI exports (_start_app symbol) are generated correctly
+        # The wrapper script sets CI environment variables to prevent dev server issues
+        # Caching handles Rust dependencies and iOS project files for faster rebuilds
         
         # Create ExportOptions.plist for App Store distribution
         mkdir -p build
