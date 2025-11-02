@@ -176,15 +176,13 @@ jobs:
           chmod +x "$WRAPPER_SCRIPT"
           
           # Update the project file to use the wrapper script
-          # Use the wrapper script with path relative to project file location
-          # Since wrapper is in same dir as project.pbxproj, we can use just the filename
-          # But Xcode runs from project root, so we need the full relative path
-          RELATIVE_WRAPPER="src-tauri/gen/apple/circuit-assistant-mobile-companion.xcodeproj/build_rust_wrapper.sh"
-          
-          # Escape the path for sed replacement
-          ESCAPED_WRAPPER=$(printf '%s\n' "$RELATIVE_WRAPPER" | sed 's/[[\.*^$()+?{|]/\\&/g' | sed 's|/|\\/|g')
-          sed -i '' "s|npm run -- tauri ios xcode-script|$RELATIVE_WRAPPER|g" "$PROJECT_FILE"
-          echo "Updated build script to use wrapper: $RELATIVE_WRAPPER"
+          # Use ${SRCROOT} which Xcode provides - it points to the directory containing the .xcodeproj
+          # This avoids path resolution issues when Xcode runs from DerivedData
+          # Replace the npm command with the wrapper script path
+          # ${SRCROOT} is an Xcode variable that points to the directory containing the .xcodeproj
+          # In bash double quotes, \${SRCROOT} becomes ${SRCROOT} which is what we want in the file
+          sed -i '' "s|npm run -- tauri ios xcode-script|\${SRCROOT}/build_rust_wrapper.sh|g" "$PROJECT_FILE"
+          echo "Updated build script to use wrapper at: \${SRCROOT}/build_rust_wrapper.sh"
         fi
       
     - name: Build iOS IPA for TestFlight
