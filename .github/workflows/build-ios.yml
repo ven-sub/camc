@@ -149,8 +149,9 @@ jobs:
         # This prevents the dev server connection error in CI
         if grep -q "tauri ios xcode-script" "$PROJECT_FILE"; then
           # Create a wrapper script that checks if libapp.a exists before calling Tauri
-          # Place it next to the project file so we can use a simple relative path
-          WRAPPER_DIR="$(dirname "$PROJECT_FILE")"
+          # ${SRCROOT} points to the directory containing the .xcodeproj (src-tauri/gen/apple/)
+          # So we need to place the wrapper script there, not inside the .xcodeproj directory
+          WRAPPER_DIR="$(dirname "$(dirname "$PROJECT_FILE")")"
           WRAPPER_SCRIPT="$WRAPPER_DIR/build_rust_wrapper.sh"
           
           # Get the project root (where package.json is) for absolute path resolution
