@@ -194,15 +194,15 @@ jobs:
           printf '\n' >> "$WRAPPER_SCRIPT"
           printf '# Set environment variables to prevent dev server connection in CI\n' >> "$WRAPPER_SCRIPT"
           printf 'export TAURI_SKIP_DEV_SERVER=1\n' >> "$WRAPPER_SCRIPT"
-          printf 'export RUST_BACKTRACE=1\n' >> "$WRAPPER_SCRIPT"
+          printf 'export TAURI_DEV_HOST="127.0.0.1:1"\n' >> "$WRAPPER_SCRIPT"
+          printf 'export RUST_BACKTRACE=full\n' >> "$WRAPPER_SCRIPT"
           printf 'export CI=true\n' >> "$WRAPPER_SCRIPT"
           printf 'export RELEASE_BUILD=true\n' >> "$WRAPPER_SCRIPT"
           printf '\n' >> "$WRAPPER_SCRIPT"
-          printf '# Create dev server addr file with a host:port (no scheme) to prevent Tauri CLI resolution errors\n' >> "$WRAPPER_SCRIPT"
+          printf '# Write a host:port (no scheme) so Tauri does not see an empty host\n' >> "$WRAPPER_SCRIPT"
           printf 'SERVER_ADDR_FILE="${TMPDIR:-/tmp}/org.circuitassistant.camc-server-addr"\n' >> "$WRAPPER_SCRIPT"
           printf 'echo "Ensuring dev server addr file contains a safe host:port: $SERVER_ADDR_FILE"\n' >> "$WRAPPER_SCRIPT"
           printf 'mkdir -p "$(dirname "$SERVER_ADDR_FILE")" || { echo "ERROR: Failed to create directory for server addr file"; exit 1; }\n' >> "$WRAPPER_SCRIPT"
-          printf '# Use host:port format (no http://) - getaddrinfo expects nodename/service without scheme\n' >> "$WRAPPER_SCRIPT"
           printf 'DEV_HOST="${TAURI_DEV_HOST:-127.0.0.1:1}"\n' >> "$WRAPPER_SCRIPT"
           printf 'echo "$DEV_HOST" > "$SERVER_ADDR_FILE" || { echo "ERROR: Failed to write server addr file"; exit 1; }\n' >> "$WRAPPER_SCRIPT"
           printf 'echo "Wrote dev host to server addr file: $DEV_HOST"\n' >> "$WRAPPER_SCRIPT"
@@ -368,6 +368,7 @@ jobs:
         
         # Set environment variables to prevent Tauri dev server connection
         export TAURI_SKIP_DEV_SERVER=1
+        export TAURI_DEV_HOST="127.0.0.1:1"
         export CI=true
         export RELEASE_BUILD=true
         
