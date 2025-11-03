@@ -194,6 +194,7 @@ jobs:
           printf '\n' >> "$WRAPPER_SCRIPT"
           printf '# Set environment variables to prevent dev server connection in CI\n' >> "$WRAPPER_SCRIPT"
           printf 'export TAURI_SKIP_DEV_SERVER=1\n' >> "$WRAPPER_SCRIPT"
+          printf 'export TAURI_DEV_HOST="http://127.0.0.1:0"\n' >> "$WRAPPER_SCRIPT"
           printf 'export CI=true\n' >> "$WRAPPER_SCRIPT"
           printf 'export RELEASE_BUILD=true\n' >> "$WRAPPER_SCRIPT"
           printf '\n' >> "$WRAPPER_SCRIPT"
