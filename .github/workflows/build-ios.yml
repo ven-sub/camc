@@ -118,6 +118,19 @@ jobs:
         else
           echo "iOS project already exists, skipping init"
         fi
+        
+        # Ensure export compliance key is in Info.plist (fixes "Missing Compliance" in TestFlight)
+        INFO_PLIST="src-tauri/gen/apple/circuit-assistant-mobile-companion_iOS/Info.plist"
+        if [ -f "$INFO_PLIST" ]; then
+          if ! grep -q "ITSAppUsesNonExemptEncryption" "$INFO_PLIST"; then
+            echo "Adding export compliance key to Info.plist..."
+            # Add the key before the closing </dict> tag
+            perl -i -pe 's|</dict>\s*</plist>|\t<key>ITSAppUsesNonExemptEncryption</key>\n\t<false/>\n</dict>\n</plist>|' "$INFO_PLIST"
+            echo "✓ Export compliance key added"
+          else
+            echo "✓ Export compliance key already present"
+          fi
+        fi
 
     - name: Configure Xcode Project for Manual Signing
       run: |
@@ -246,20 +259,107 @@ jobs:
           printf '  echo $! > "$DUMMY_PID_FILE"\n' >> "$WRAPPER_SCRIPT"
           printf 'elif command -v python3 >/dev/null 2>&1; then\n' >> "$WRAPPER_SCRIPT"
           printf '  echo "Starting dummy TCP server with Python on ${DUMMY_HOST}:${DUMMY_PORT}"\n' >> "$WRAPPER_SCRIPT"
-          printf '  python3 << EOF >/dev/null 2>&1 &\n' >> "$WRAPPER_SCRIPT"
+          printf '  PYTHON_SCRIPT="${TMPDIR:-/tmp}/tauri-dummy-server.py"\n' >> "$WRAPPER_SCRIPT"
+          printf '  cat > "$PYTHON_SCRIPT" << '\''PYTHON_SCRIPT_EOF'\''\n' >> "$WRAPPER_SCRIPT"
           printf 'import socket\n' >> "$WRAPPER_SCRIPT"
           printf 'import sys\n' >> "$WRAPPER_SCRIPT"
+          printf 'import hashlib\n' >> "$WRAPPER_SCRIPT"
+          printf 'import base64\n' >> "$WRAPPER_SCRIPT"
+          printf 'import json\n' >> "$WRAPPER_SCRIPT"
+          printf 'def handle_websocket_handshake(conn):\n' >> "$WRAPPER_SCRIPT"
+          printf '    try:\n' >> "$WRAPPER_SCRIPT"
+          printf '        request = conn.recv(4096).decode('\''utf-8'\'')\n' >> "$WRAPPER_SCRIPT"
+          printf '        if not request:\n' >> "$WRAPPER_SCRIPT"
+          printf '            return\n' >> "$WRAPPER_SCRIPT"
+          printf '        lines = request.split('\''\\r\\n'\'')\n' >> "$WRAPPER_SCRIPT"
+          printf '        key = None\n' >> "$WRAPPER_SCRIPT"
+          printf '        for line in lines:\n' >> "$WRAPPER_SCRIPT"
+          printf '            if line.startswith('\''Sec-WebSocket-Key:'\''):\n' >> "$WRAPPER_SCRIPT"
+          printf '                key = line.split('\'':'\'', 1)[1].strip()\n' >> "$WRAPPER_SCRIPT"
+          printf '                break\n' >> "$WRAPPER_SCRIPT"
+          printf '        if key:\n' >> "$WRAPPER_SCRIPT"
+          printf '            magic_string = '\''258EAFA5-E914-47DA-95CA-C5AB0DC85B11'\''\n' >> "$WRAPPER_SCRIPT"
+          printf '            accept_key = base64.b64encode(\n' >> "$WRAPPER_SCRIPT"
+          printf '                hashlib.sha1((key + magic_string).encode()).digest()\n' >> "$WRAPPER_SCRIPT"
+          printf '            ).decode()\n' >> "$WRAPPER_SCRIPT"
+          printf '            accept_header = '\''Sec-WebSocket-Accept: '\'' + accept_key + '\''\\r\\n'\''\n' >> "$WRAPPER_SCRIPT"
+          printf '            response = (\n' >> "$WRAPPER_SCRIPT"
+          printf '                '\''HTTP/1.1 101 Switching Protocols\\r\\n'\''\n' >> "$WRAPPER_SCRIPT"
+          printf '                '\''Upgrade: websocket\\r\\n'\''\n' >> "$WRAPPER_SCRIPT"
+          printf '                '\''Connection: Upgrade\\r\\n'\''\n' >> "$WRAPPER_SCRIPT"
+          printf '                + accept_header +\n' >> "$WRAPPER_SCRIPT"
+          printf '                '\''\\r\\n'\''\n' >> "$WRAPPER_SCRIPT"
+          printf '            )\n' >> "$WRAPPER_SCRIPT"
+          printf '            conn.send(response.encode('\''utf-8'\''))\n' >> "$WRAPPER_SCRIPT"
+          printf '            conn.settimeout(30.0)\n' >> "$WRAPPER_SCRIPT"
+          printf '            try:\n' >> "$WRAPPER_SCRIPT"
+          printf '                while True:\n' >> "$WRAPPER_SCRIPT"
+          printf '                    data = conn.recv(4096)\n' >> "$WRAPPER_SCRIPT"
+          printf '                    if not data:\n' >> "$WRAPPER_SCRIPT"
+          printf '                        break\n' >> "$WRAPPER_SCRIPT"
+          printf '                    if len(data) < 6:\n' >> "$WRAPPER_SCRIPT"
+          printf '                        break\n' >> "$WRAPPER_SCRIPT"
+          printf '                    if (data[0] & 0x0F) == 0x8:\n' >> "$WRAPPER_SCRIPT"
+          printf '                        close_frame = bytearray([0x88, 0x00])\n' >> "$WRAPPER_SCRIPT"
+          printf '                        conn.send(close_frame)\n' >> "$WRAPPER_SCRIPT"
+          printf '                        break\n' >> "$WRAPPER_SCRIPT"
+          printf '                    if (data[0] & 0x0F) == 0x1:\n' >> "$WRAPPER_SCRIPT"
+          printf '                        mask_start = 2\n' >> "$WRAPPER_SCRIPT"
+          printf '                        if data[1] & 0x7F == 126:\n' >> "$WRAPPER_SCRIPT"
+          printf '                            mask_start = 4\n' >> "$WRAPPER_SCRIPT"
+          printf '                        elif data[1] & 0x7F == 127:\n' >> "$WRAPPER_SCRIPT"
+          printf '                            mask_start = 10\n' >> "$WRAPPER_SCRIPT"
+          printf '                        mask = data[mask_start:mask_start+4]\n' >> "$WRAPPER_SCRIPT"
+          printf '                        payload_start = mask_start + 4\n' >> "$WRAPPER_SCRIPT"
+          printf '                        payload_len = data[1] & 0x7F\n' >> "$WRAPPER_SCRIPT"
+          printf '                        if payload_len == 126:\n' >> "$WRAPPER_SCRIPT"
+          printf '                            payload_len = (data[2] << 8) | data[3]\n' >> "$WRAPPER_SCRIPT"
+          printf '                            payload_start = 8\n' >> "$WRAPPER_SCRIPT"
+          printf '                        elif payload_len == 127:\n' >> "$WRAPPER_SCRIPT"
+          printf '                            payload_start = 14\n' >> "$WRAPPER_SCRIPT"
+          printf '                        payload = bytearray()\n' >> "$WRAPPER_SCRIPT"
+          printf '                        for i in range(payload_len):\n' >> "$WRAPPER_SCRIPT"
+          printf '                            payload.append(data[payload_start + i] ^ mask[i % 4])\n' >> "$WRAPPER_SCRIPT"
+          printf '                        try:\n' >> "$WRAPPER_SCRIPT"
+          printf '                            req = json.loads(payload.decode('\''utf-8'\''))\n' >> "$WRAPPER_SCRIPT"
+          printf '                            result = {"dev": False, "args": [], "noise_level": "Polite", "target": None, "features": [], "release": False, "debug": False, "verbose": False, "vars": {}, "config": []}\n' >> "$WRAPPER_SCRIPT"
+          printf '                            response_obj = {"jsonrpc": "2.0", "id": req.get("id"), "result": result}\n' >> "$WRAPPER_SCRIPT"
+          printf '                            response_json = json.dumps(response_obj)\n' >> "$WRAPPER_SCRIPT"
+          printf '                            response_frame = bytearray([0x81])\n' >> "$WRAPPER_SCRIPT"
+          printf '                            response_len = len(response_json)\n' >> "$WRAPPER_SCRIPT"
+          printf '                            if response_len < 126:\n' >> "$WRAPPER_SCRIPT"
+          printf '                                response_frame.append(response_len)\n' >> "$WRAPPER_SCRIPT"
+          printf '                            elif response_len < 65536:\n' >> "$WRAPPER_SCRIPT"
+          printf '                                response_frame.append(126)\n' >> "$WRAPPER_SCRIPT"
+          printf '                                response_frame.append((response_len >> 8) & 0xFF)\n' >> "$WRAPPER_SCRIPT"
+          printf '                                response_frame.append(response_len & 0xFF)\n' >> "$WRAPPER_SCRIPT"
+          printf '                            response_frame.extend(response_json.encode('\''utf-8'\''))\n' >> "$WRAPPER_SCRIPT"
+          printf '                            conn.send(response_frame)\n' >> "$WRAPPER_SCRIPT"
+          printf '                        except:\n' >> "$WRAPPER_SCRIPT"
+          printf '                            pass\n' >> "$WRAPPER_SCRIPT"
+          printf '            except socket.timeout:\n' >> "$WRAPPER_SCRIPT"
+          printf '                pass\n' >> "$WRAPPER_SCRIPT"
+          printf '            except:\n' >> "$WRAPPER_SCRIPT"
+          printf '                pass\n' >> "$WRAPPER_SCRIPT"
+          printf '        else:\n' >> "$WRAPPER_SCRIPT"
+          printf '            response = '\''HTTP/1.1 200 OK\\r\\n\\r\\n'\''\n' >> "$WRAPPER_SCRIPT"
+          printf '            conn.send(response.encode('\''utf-8'\''))\n' >> "$WRAPPER_SCRIPT"
+          printf '    except:\n' >> "$WRAPPER_SCRIPT"
+          printf '        pass\n' >> "$WRAPPER_SCRIPT"
+          printf '    finally:\n' >> "$WRAPPER_SCRIPT"
+          printf '        conn.close()\n' >> "$WRAPPER_SCRIPT"
           printf 's = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n' >> "$WRAPPER_SCRIPT"
           printf 's.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n' >> "$WRAPPER_SCRIPT"
-          printf 's.bind(("${DUMMY_HOST}", ${DUMMY_PORT}))\n' >> "$WRAPPER_SCRIPT"
+          printf 's.bind(("127.0.0.1", 12345))\n' >> "$WRAPPER_SCRIPT"
           printf 's.listen(5)\n' >> "$WRAPPER_SCRIPT"
           printf 'while True:\n' >> "$WRAPPER_SCRIPT"
-          printf '  try:\n' >> "$WRAPPER_SCRIPT"
-          printf '    conn, addr = s.accept()\n' >> "$WRAPPER_SCRIPT"
-          printf '    conn.close()\n' >> "$WRAPPER_SCRIPT"
-          printf '  except:\n' >> "$WRAPPER_SCRIPT"
-          printf '    break\n' >> "$WRAPPER_SCRIPT"
-          printf 'EOF\n' >> "$WRAPPER_SCRIPT"
+          printf '    try:\n' >> "$WRAPPER_SCRIPT"
+          printf '        conn, addr = s.accept()\n' >> "$WRAPPER_SCRIPT"
+          printf '        handle_websocket_handshake(conn)\n' >> "$WRAPPER_SCRIPT"
+          printf '    except:\n' >> "$WRAPPER_SCRIPT"
+          printf '        break\n' >> "$WRAPPER_SCRIPT"
+          printf 'PYTHON_SCRIPT_EOF\n' >> "$WRAPPER_SCRIPT"
+          printf '  python3 "$PYTHON_SCRIPT" >/dev/null 2>&1 &\n' >> "$WRAPPER_SCRIPT"
           printf '  echo $! > "$DUMMY_PID_FILE"\n' >> "$WRAPPER_SCRIPT"
           printf 'else\n' >> "$WRAPPER_SCRIPT"
           printf '  echo "WARNING: No suitable tool (socat/nc/python3) found for dummy server"\n' >> "$WRAPPER_SCRIPT"
@@ -335,10 +435,25 @@ jobs:
           if grep -q "npm run -- tauri ios xcode-script" "$PROJECT_FILE"; then
             # Use perl for more reliable multiline/pattern matching
             perl -i -pe 's|(shellScript = ")npm run -- tauri ios xcode-script |$1\${SRCROOT}/build_rust_wrapper.sh |g' "$PROJECT_FILE"
+            # Fix the FORCE_COLOR issue - remove "0" that appears when FORCE_COLOR is empty
+            perl -i -pe 's| --configuration \$\{CONFIGURATION:\?\} 0 \$\{ARCHS:\?\}| --configuration \$\{CONFIGURATION:\?\} \$\{ARCHS:\?\}|g' "$PROJECT_FILE"
+            perl -i -pe 's| --configuration \$\{CONFIGURATION:\?\} 0"| --configuration \$\{CONFIGURATION:\?\}"|g' "$PROJECT_FILE"
             echo "Updated build script using perl replacement"
           else
             echo "Note: npm command not found in project file (may have been already replaced)"
+            # Still fix the FORCE_COLOR/arch issue even if wrapper is already set
+            perl -i -pe 's| --configuration \$\{CONFIGURATION:\?\} 0 \$\{ARCHS:\?\}| --configuration \$\{CONFIGURATION:\?\} \$\{ARCHS:\?\}|g' "$PROJECT_FILE" || true
           fi
+          
+          # Fix: Remove libapp.a from Resources build phase (it should only be in Frameworks)
+          # App Store validation fails if libapp.a is copied into the app bundle
+          if grep -q "libapp.a in Resources" "$PROJECT_FILE"; then
+            echo "Removing libapp.a from Resources phase (should only be in Frameworks)..."
+            perl -i -pe 's|^\s*D85AEC8F3A553813F4C8FFE9 /\* libapp\.a in Resources \*/.*\n||g' "$PROJECT_FILE"
+            perl -i -pe 's|,\s*D85AEC8F3A553813F4C8FFE9 /\* libapp\.a in Resources \*/||g' "$PROJECT_FILE"
+            echo "✓ Removed libapp.a from Resources phase"
+          fi
+          
           echo "Updated build script to use wrapper at: \${SRCROOT}/build_rust_wrapper.sh"
           
           # Verify the replacement worked
@@ -418,7 +533,7 @@ jobs:
             <key>method</key>
             <string>app-store</string>
             <key>destination</key>
-            <string>upload</string>
+            <string>export</string>
             <key>signingStyle</key>
             <string>manual</string>
             <key>signingCertificate</key>

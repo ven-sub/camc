@@ -42,3 +42,6 @@ src-tauri/gen/ios/Podfile.lock
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Build secrets (DO NOT COMMIT)
+build-ios-secrets.txt
