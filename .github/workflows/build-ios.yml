@@ -185,8 +185,12 @@ jobs:
           printf '# Use set -e but with explicit error handling\n' >> "$WRAPPER_SCRIPT"
           printf 'set -e\n' >> "$WRAPPER_SCRIPT"
           printf 'set -x\n' >> "$WRAPPER_SCRIPT"
-          printf 'exec >&2\n' >> "$WRAPPER_SCRIPT"
+          printf '# Log to both stderr (for Xcode) and file (for debugging)\n' >> "$WRAPPER_SCRIPT"
+          printf 'LOG_FILE="${TMPDIR:-/tmp}/tauri-wrapper-$(date +%%s).log"\n' >> "$WRAPPER_SCRIPT"
+          printf 'exec > >(tee -a "$LOG_FILE" >&2)\n' >> "$WRAPPER_SCRIPT"
+          printf 'exec 2>&1\n' >> "$WRAPPER_SCRIPT"
           printf 'echo "=== Wrapper Script Started === $(date)"\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "Log file: $LOG_FILE"\n' >> "$WRAPPER_SCRIPT"
           printf 'echo "Script location: ${BASH_SOURCE[0]}"\n' >> "$WRAPPER_SCRIPT"
           printf 'echo "SRCROOT=${SRCROOT}"\n' >> "$WRAPPER_SCRIPT"
           printf 'echo "CONFIGURATION=${CONFIGURATION}"\n' >> "$WRAPPER_SCRIPT"
@@ -236,7 +240,20 @@ jobs:
           printf '  echo $! > "$DUMMY_PID_FILE"\n' >> "$WRAPPER_SCRIPT"
           printf 'elif command -v python3 >/dev/null 2>&1; then\n' >> "$WRAPPER_SCRIPT"
           printf '  echo "Starting dummy TCP server with Python on ${DUMMY_HOST}:${DUMMY_PORT}"\n' >> "$WRAPPER_SCRIPT"
-          printf '  python3 -c "import socket; s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind((\\\"${DUMMY_HOST}\\\", ${DUMMY_PORT})); s.listen(5); [s.accept()[0].close() for _ in iter(int, 1)]" >/dev/null 2>&1 &\n' >> "$WRAPPER_SCRIPT"
+          printf '  python3 << EOF >/dev/null 2>&1 &\n' >> "$WRAPPER_SCRIPT"
+          printf 'import socket\n' >> "$WRAPPER_SCRIPT"
+          printf 'import sys\n' >> "$WRAPPER_SCRIPT"
+          printf 's = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n' >> "$WRAPPER_SCRIPT"
+          printf 's.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n' >> "$WRAPPER_SCRIPT"
+          printf 's.bind(("${DUMMY_HOST}", ${DUMMY_PORT}))\n' >> "$WRAPPER_SCRIPT"
+          printf 's.listen(5)\n' >> "$WRAPPER_SCRIPT"
+          printf 'while True:\n' >> "$WRAPPER_SCRIPT"
+          printf '  try:\n' >> "$WRAPPER_SCRIPT"
+          printf '    conn, addr = s.accept()\n' >> "$WRAPPER_SCRIPT"
+          printf '    conn.close()\n' >> "$WRAPPER_SCRIPT"
+          printf '  except:\n' >> "$WRAPPER_SCRIPT"
+          printf '    break\n' >> "$WRAPPER_SCRIPT"
+          printf 'EOF\n' >> "$WRAPPER_SCRIPT"
           printf '  echo $! > "$DUMMY_PID_FILE"\n' >> "$WRAPPER_SCRIPT"
           printf 'else\n' >> "$WRAPPER_SCRIPT"
           printf '  echo "WARNING: No suitable tool (socat/nc/python3) found for dummy server"\n' >> "$WRAPPER_SCRIPT"
@@ -273,7 +290,14 @@ jobs:
           printf 'cd "$PROJECT_ROOT" || { echo "ERROR: Failed to cd to $PROJECT_ROOT"; exit 1; }\n' >> "$WRAPPER_SCRIPT"
           printf 'echo "Current directory: $(pwd)"\n' >> "$WRAPPER_SCRIPT"
           printf 'echo "Running: npm run -- tauri ios xcode-script $*"\n' >> "$WRAPPER_SCRIPT"
-          printf 'exec npm run -- tauri ios xcode-script "$@"\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "Log file location: $LOG_FILE"\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "Starting Tauri build at $(date)"\n' >> "$WRAPPER_SCRIPT"
+          printf 'npm run -- tauri ios xcode-script "$@"\n' >> "$WRAPPER_SCRIPT"
+          printf 'TAURI_EXIT_CODE=$?\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "Tauri build completed with exit code: $TAURI_EXIT_CODE"\n' >> "$WRAPPER_SCRIPT"
+          printf 'echo "Log file contents:"\n' >> "$WRAPPER_SCRIPT"
+          printf 'cat "$LOG_FILE" 2>/dev/null || echo "Log file not found"\n' >> "$WRAPPER_SCRIPT"
+          printf 'exit $TAURI_EXIT_CODE\n' >> "$WRAPPER_SCRIPT"
           
           chmod +x "$WRAPPER_SCRIPT"
           
@@ -444,6 +468,10 @@ jobs:
         xcodebuild -showBuildSettings -project "$XCODE_PROJECT" -scheme "$SCHEME" -configuration Release || true
         echo "=== End diagnostics ==="
         
+        # Check for wrapper script log files before starting build
+        echo "=== Checking for existing wrapper script logs ==="
+        ls -la /tmp/tauri-wrapper-*.log 2>/dev/null || echo "No existing wrapper logs found"
+        
         # Save full unfiltered output for debugging
         FULL_LOG="/tmp/xcodebuild-archive-full.log"
         set -o pipefail
@@ -463,6 +491,18 @@ jobs:
           echo "Archive failed. Full unfiltered output:"
           echo "========================================="
           sed -n '1,400p' "$FULL_LOG" || true
+          echo "========================================="
+          echo "Checking for wrapper script log files:"
+          ls -la /tmp/tauri-wrapper-*.log 2>/dev/null || echo "No wrapper logs found"
+          echo "========================================="
+          echo "Latest wrapper script log (if exists):"
+          LATEST_WRAPPER_LOG=$(ls -t /tmp/tauri-wrapper-*.log 2>/dev/null | head -1)
+          if [ -n "$LATEST_WRAPPER_LOG" ]; then
+            echo "File: $LATEST_WRAPPER_LOG"
+            cat "$LATEST_WRAPPER_LOG" || echo "Failed to read log file"
+          else
+            echo "No wrapper log file found"
+          fi
           echo "========================================="
           echo "Checking for specific errors in full log:"
           grep -E "(Error|error|panic|failed|Abort|codesign|Provisioning)" "$FULL_LOG" | tail -40 || echo "No error patterns found"
