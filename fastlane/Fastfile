@@ -29,6 +29,7 @@ platform :ios do
     # Skip precheck validation (not compatible with API keys for IAP checks)
     ENV["FASTLANE_SKIP_PRECHECK"] = "1"
     
+    # Upload the build
     deliver(
       skip_screenshots: true,
       skip_metadata: true,
@@ -37,6 +38,25 @@ platform :ios do
       submit_for_review: false,
       skip_precheck: true
     )
+    
+    # Enable the build for internal testing group
+    # Note: This requires the build to be processed first (may take a few minutes)
+    # If the build isn't ready yet, you'll need to enable it manually or run this later
+    begin
+      pilot(
+        groups: ["MoCom Testers"],  # Internal testing group name
+        distribute_external: false,
+        skip_waiting_for_build_processing: false,  # Wait for processing to complete
+        wait_for_processing: true
+      )
+      UI.success("Build enabled for MoCom Testers group")
+    rescue => ex
+      UI.important("Could not automatically enable build for testers: #{ex.message}")
+      UI.important("Please enable the build manually in App Store Connect:")
+      UI.important("1. Go to TestFlight > Builds")
+      UI.important("2. Select the build")
+      UI.important("3. Enable it for 'MoCom Testers' group")
+    end
   end
 end
 
