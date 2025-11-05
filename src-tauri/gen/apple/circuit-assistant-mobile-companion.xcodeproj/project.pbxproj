@@ -170,7 +170,7 @@
 			path = "circuit-assistant-mobile-companion_iOS";
 			sourceTree = "<group>";
 		};
-		"TEMP_4F0A5784-52A2-470F-BE05-38117221F250" /* x86_64 */ = {
+		"TEMP_B8A5C231-C8F9-433B-B583-7D49892A6A4C" /* x86_64 */ = {
 			isa = PBXGroup;
 			children = (
 			);

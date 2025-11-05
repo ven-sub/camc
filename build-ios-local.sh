@@ -284,17 +284,9 @@ fi
 echo -e "${YELLOW}Step 1: Generating Tauri iOS project...${NC}"
 npm run tauri ios init || echo "iOS project may already exist"
 
-# Set build number - use timestamp for local builds to ensure uniqueness
-BUILD_NUMBER=$(date +%Y%m%d%H%M)
-echo "Setting build number to: $BUILD_NUMBER"
-
 # Ensure export compliance key is in Info.plist (fixes "Missing Compliance" in TestFlight)
 INFO_PLIST="src-tauri/gen/apple/circuit-assistant-mobile-companion_iOS/Info.plist"
 if [ -f "$INFO_PLIST" ]; then
-    # Update CFBundleVersion to use build number
-    perl -i -pe "s|<key>CFBundleVersion</key>\s*<string>[^<]*</string>|<key>CFBundleVersion</key>\n\t<string>$BUILD_NUMBER</string>|" "$INFO_PLIST"
-    echo -e "${GREEN}✓ Updated CFBundleVersion to: $BUILD_NUMBER${NC}"
-    
     # Check if export compliance key already exists
     if ! grep -q "ITSAppUsesNonExemptEncryption" "$INFO_PLIST"; then
         echo -e "${YELLOW}Adding export compliance key to Info.plist...${NC}"
@@ -304,10 +296,6 @@ if [ -f "$INFO_PLIST" ]; then
     else
         echo -e "${GREEN}✓ Export compliance key already present${NC}"
     fi
-    
-    # Display version info
-    echo "Version information:"
-    grep -A1 "CFBundleShortVersionString\|CFBundleVersion" "$INFO_PLIST" | head -4
 else
     echo -e "${RED}Error: Info.plist not found${NC}"
 fi
@@ -664,6 +652,32 @@ echo ""
 
 # Step 6: Archive the app
 echo -e "${YELLOW}Step 6: Archiving iOS app...${NC}"
+
+# Update build number and ensure export compliance key just before archiving
+# (Tauri/Xcode may regenerate Info.plist earlier, so we do this at the last moment)
+BUILD_NUMBER=$(date +%Y%m%d%H%M)
+INFO_PLIST="src-tauri/gen/apple/circuit-assistant-mobile-companion_iOS/Info.plist"
+if [ -f "$INFO_PLIST" ]; then
+    echo "Updating build number to: $BUILD_NUMBER"
+    # Use -0 to slurp file and /s to make . match newlines
+    perl -i -0pe "s|(<key>CFBundleVersion</key>[^<]*<string>)[^<]*(</string>)|\${1}$BUILD_NUMBER\${2}|s" "$INFO_PLIST"
+    echo -e "${GREEN}✓ CFBundleVersion updated to: $BUILD_NUMBER${NC}"
+    
+    # Ensure export compliance key is present (fixes "Missing Compliance" in TestFlight)
+    if ! grep -q "ITSAppUsesNonExemptEncryption" "$INFO_PLIST"; then
+        echo -e "${YELLOW}Adding export compliance key to Info.plist (was missing)...${NC}"
+        perl -i -0pe 's|</dict>\s*</plist>|\t<key>ITSAppUsesNonExemptEncryption</key>\n\t<false/>\n</dict>\n</plist>|' "$INFO_PLIST"
+        echo -e "${GREEN}✓ Export compliance key added${NC}"
+    else
+        echo -e "${GREEN}✓ Export compliance key confirmed present${NC}"
+    fi
+    
+    # Display final version info
+    echo "Final version information for archive:"
+    grep -A1 "CFBundleVersion\|ITSAppUsesNonExemptEncryption" "$INFO_PLIST" | head -6
+fi
+echo ""
+
 SCHEME="circuit-assistant-mobile-companion_iOS"
 ARCHIVE_PATH="$PWD/build/ios.xcarchive"
 EXPORT_PATH="$PWD/build/ios-export"

@@ -119,17 +119,10 @@ jobs:
           echo "iOS project already exists, skipping init"
         fi
         
-        # Set build number to GitHub run number for auto-incrementing
-        BUILD_NUMBER="${{ github.run_number }}"
-        echo "Setting build number to: $BUILD_NUMBER"
-        
+        # Ensure export compliance key is in Info.plist (fixes "Missing Compliance" in TestFlight)
+        # Note: Build number will be updated just before archiving
         INFO_PLIST="src-tauri/gen/apple/circuit-assistant-mobile-companion_iOS/Info.plist"
         if [ -f "$INFO_PLIST" ]; then
-          # Update CFBundleVersion to use build number instead of version string
-          perl -i -pe "s|<key>CFBundleVersion</key>\s*<string>[^<]*</string>|<key>CFBundleVersion</key>\n\t<string>$BUILD_NUMBER</string>|" "$INFO_PLIST"
-          echo "✓ Updated CFBundleVersion to: $BUILD_NUMBER"
-          
-          # Ensure export compliance key is in Info.plist (fixes "Missing Compliance" in TestFlight)
           if ! grep -q "ITSAppUsesNonExemptEncryption" "$INFO_PLIST"; then
             echo "Adding export compliance key to Info.plist..."
             # Add the key before the closing </dict> tag
@@ -138,10 +131,6 @@ jobs:
           else
             echo "✓ Export compliance key already present"
           fi
-          
-          # Display the version info for verification
-          echo "Version information in Info.plist:"
-          grep -A1 "CFBundleShortVersionString\|CFBundleVersion" "$INFO_PLIST" | head -4
         fi
 
     - name: Configure Xcode Project for Manual Signing
@@ -391,6 +380,31 @@ jobs:
         # Check for wrapper script log files before starting build
         echo "=== Checking for existing wrapper script logs ==="
         ls -la /tmp/tauri-wrapper-*.log 2>/dev/null || echo "No existing wrapper logs found"
+        
+        # Update build number and ensure export compliance key just before archiving
+        # (Tauri/Xcode may regenerate Info.plist earlier, so we do this at the last moment)
+        BUILD_NUMBER="${{ github.run_number }}"
+        INFO_PLIST="src-tauri/gen/apple/circuit-assistant-mobile-companion_iOS/Info.plist"
+        if [ -f "$INFO_PLIST" ]; then
+          echo "Updating build number to: $BUILD_NUMBER"
+          # Use -0 to slurp file and /s to make . match newlines
+          perl -i -0pe "s|(<key>CFBundleVersion</key>[^<]*<string>)[^<]*(</string>)|\${1}$BUILD_NUMBER\${2}|s" "$INFO_PLIST"
+          echo "✓ CFBundleVersion updated to: $BUILD_NUMBER"
+          
+          # Ensure export compliance key is present (fixes "Missing Compliance" in TestFlight)
+          if ! grep -q "ITSAppUsesNonExemptEncryption" "$INFO_PLIST"; then
+            echo "Adding export compliance key to Info.plist (was missing)..."
+            perl -i -0pe 's|</dict>\s*</plist>|\t<key>ITSAppUsesNonExemptEncryption</key>\n\t<false/>\n</dict>\n</plist>|' "$INFO_PLIST"
+            echo "✓ Export compliance key added"
+          else
+            echo "✓ Export compliance key confirmed present"
+          fi
+          
+          # Display final version info
+          echo "Final version information for archive:"
+          grep -A1 "CFBundleVersion\|ITSAppUsesNonExemptEncryption" "$INFO_PLIST" | head -6
+        fi
+        echo ""
         
         # Save full unfiltered output for debugging
         FULL_LOG="/tmp/xcodebuild-archive-full.log"
