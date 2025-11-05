@@ -26,17 +26,10 @@ platform :ios do
       )
     end
     
-    # Skip precheck validation (not compatible with API keys for IAP checks)
-    ENV["FASTLANE_SKIP_PRECHECK"] = "1"
-    
-    # Upload the build
-    deliver(
-      skip_screenshots: true,
-      skip_metadata: true,
-      skip_app_version_update: true,
-      force: true,
-      submit_for_review: false,
-      skip_precheck: true
+    # Upload to TestFlight using pilot (not deliver which is for App Store)
+    pilot(
+      skip_submission: true,  # Don't submit for beta review automatically
+      skip_waiting_for_build_processing: true  # Don't wait 20+ minutes
     )
     
     # Note: Automatic group enabling disabled to avoid 20+ minute wait times
@@ -44,7 +37,7 @@ platform :ios do
     # 1. Go to TestFlight > Builds > iOS
     # 2. Select the build
     # 3. Enable it for 'MoCom Testers' group
-    UI.important("Build uploaded successfully!")
+    UI.success("Build uploaded successfully!")
     UI.important("To enable for testers: App Store Connect > TestFlight > Builds > Enable for 'MoCom Testers'")
   end
 end
