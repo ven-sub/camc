@@ -45,3 +45,10 @@ src-tauri/gen/ios/Podfile.lock
 
 # Build secrets (DO NOT COMMIT)
 build-ios-secrets.txt
+
+# Build artifacts
+build/
+
+# Ruby bundler
+vendor/
+.bundle/

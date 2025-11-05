@@ -1,0 +1,97 @@
+name: Upload to TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_name:
+        description: 'Artifact name from previous build (e.g., camc-ios-main)'
+        required: false
+        type: string
+      run_id:
+        description: 'Run ID of the build that created the artifact (optional, defaults to latest)'
+        required: false
+        type: string
+      ipa_path:
+        description: 'Direct path to IPA file (if already downloaded)'
+        required: false
+        type: string
+
+jobs:
+  upload:
+    name: Upload to TestFlight
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.3'
+        bundler-cache: true
+        
+    - name: Download artifact (if artifact_name provided)
+      if: inputs.artifact_name != ''
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.artifact_name }}
+        run-id: ${{ inputs.run_id }}
+        path: ./download
+        
+    - name: Find IPA file
+      id: find_ipa
+      run: |
+        if [ -n "${{ inputs.ipa_path }}" ]; then
+          # Use provided IPA path
+          IPA_FILE="${{ inputs.ipa_path }}"
+          echo "Using provided IPA: $IPA_FILE"
+        elif [ -n "${{ inputs.artifact_name }}" ]; then
+          # Find IPA in downloaded artifact
+          IPA_FILE=$(find ./download -name "*.ipa" -type f | head -n 1)
+          if [ -z "$IPA_FILE" ]; then
+            echo "Error: No IPA file found in artifact"
+            exit 1
+          fi
+          echo "Found IPA in artifact: $IPA_FILE"
+        else
+          # Look for IPA in build directory (if running after build in same workflow)
+          IPA_FILE=$(find ./build -name "*.ipa" -type f | head -n 1)
+          if [ -z "$IPA_FILE" ]; then
+            echo "Error: No IPA file found. Please provide artifact_name or ipa_path"
+            exit 1
+          fi
+          echo "Found IPA in build directory: $IPA_FILE"
+        fi
+        
+        # Verify file exists
+        if [ ! -f "$IPA_FILE" ]; then
+          echo "Error: IPA file does not exist: $IPA_FILE"
+          exit 1
+        fi
+        
+        echo "IPA_PATH=$IPA_FILE" >> $GITHUB_ENV
+        echo "IPA file: $IPA_FILE ($(du -h "$IPA_FILE" | cut -f1))"
+        
+    - name: Upload to TestFlight
+      env:
+        APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+        APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+        APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+      run: |
+        echo "Uploading IPA to TestFlight: $IPA_PATH"
+        bundle exec fastlane ios testflight ipa:"$IPA_PATH"
+        
+    - name: Upload result
+      if: always()
+      run: |
+        if [ $? -eq 0 ]; then
+          echo "✅ Upload successful!"
+          echo "Remember to enable the build for 'MoCom Testers' group in App Store Connect:"
+          echo "1. Go to TestFlight > Builds > iOS"
+          echo "2. Select the new build"
+          echo "3. Enable it for 'MoCom Testers' group"
+        else
+          echo "❌ Upload failed"
+        fi
+

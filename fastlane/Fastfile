@@ -4,7 +4,7 @@ default_platform(:ios)
 
 platform :ios do
   desc "Upload iOS app to TestFlight"
-  lane :testflight do
+  lane :testflight do |options|
     # Read environment variables from GitHub Actions
     api_key_path = ENV["APPSTORE_API_KEY_PATH"]
     
@@ -28,6 +28,7 @@ platform :ios do
     
     # Upload to TestFlight using pilot (not deliver which is for App Store)
     pilot(
+      ipa: options[:ipa],  # IPA file path passed from command line
       skip_submission: true,  # Don't submit for beta review automatically
       skip_waiting_for_build_processing: true  # Don't wait 20+ minutes
     )
