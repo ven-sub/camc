@@ -39,24 +39,13 @@ platform :ios do
       skip_precheck: true
     )
     
-    # Enable the build for internal testing group
-    # Note: This requires the build to be processed first (may take a few minutes)
-    # If the build isn't ready yet, you'll need to enable it manually or run this later
-    begin
-      pilot(
-        groups: ["MoCom Testers"],  # Internal testing group name
-        distribute_external: false,
-        skip_waiting_for_build_processing: false,  # Wait for processing to complete
-        wait_for_processing: true
-      )
-      UI.success("Build enabled for MoCom Testers group")
-    rescue => ex
-      UI.important("Could not automatically enable build for testers: #{ex.message}")
-      UI.important("Please enable the build manually in App Store Connect:")
-      UI.important("1. Go to TestFlight > Builds")
-      UI.important("2. Select the build")
-      UI.important("3. Enable it for 'MoCom Testers' group")
-    end
+    # Note: Automatic group enabling disabled to avoid 20+ minute wait times
+    # Enable builds manually in App Store Connect after upload:
+    # 1. Go to TestFlight > Builds > iOS
+    # 2. Select the build
+    # 3. Enable it for 'MoCom Testers' group
+    UI.important("Build uploaded successfully!")
+    UI.important("To enable for testers: App Store Connect > TestFlight > Builds > Enable for 'MoCom Testers'")
   end
 end
 
