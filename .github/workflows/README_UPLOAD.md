@@ -8,21 +8,23 @@ This workflow allows you to upload an existing IPA file to TestFlight without re
 
 ## How to Use
 
-### Option 1: Upload from Previous Build Artifact
+### Option 1: Upload from Previous Build Artifact (Most Common)
 1. Go to: **Actions** tab in GitHub
 2. Click: **Upload to TestFlight** workflow (left sidebar)
 3. Click: **Run workflow** button (right side)
 4. Fill in:
-   - **artifact_name**: `camc-ios-main` (or your branch name)
-   - **run_id**: (Optional) Leave empty for latest, or specific run ID
+   - **artifact_name**: `camc-ios-main` (or `camc-ios-{your-branch}`)
+   - **run_id**: Leave empty (will use latest successful build)
    - **ipa_path**: Leave empty
 5. Click: **Run workflow**
 
 The workflow will:
-- Download the artifact from the specified build
+- Download the artifact from the latest successful iOS build
 - Find the IPA file
 - Upload to TestFlight
 - Complete in ~1-2 minutes
+
+**Note:** The artifact is downloaded from the latest successful run of the `build-ios.yml` workflow. If you need a specific build, provide the `run_id`.
 
 ### Option 2: Upload Specific IPA (Advanced)
 If you have the IPA file path available in the runner:

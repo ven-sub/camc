@@ -33,11 +33,14 @@ jobs:
         
     - name: Download artifact (if artifact_name provided)
       if: inputs.artifact_name != ''
-      uses: actions/download-artifact@v4
+      uses: dawidd6/action-download-artifact@v3
       with:
         name: ${{ inputs.artifact_name }}
-        run-id: ${{ inputs.run_id }}
+        workflow: build-ios.yml
+        run_id: ${{ inputs.run_id }}
         path: ./download
+        # If run_id not specified, get from latest successful run
+        workflow_conclusion: success
         
     - name: Find IPA file
       id: find_ipa
