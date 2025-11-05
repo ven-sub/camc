@@ -280,6 +280,22 @@ else
     echo ""
 fi
 
+# Step 0.5: Build frontend (CRITICAL - app needs bundled assets)
+echo -e "${YELLOW}Step 0.5: Building frontend with Vite...${NC}"
+if [ ! -d "dist" ] || [ -z "$(ls -A dist 2>/dev/null)" ]; then
+    echo "dist/ folder empty or missing, building frontend..."
+    npm run build
+    if [ ! -d "dist" ] || [ -z "$(ls -A dist 2>/dev/null)" ]; then
+        echo -e "${RED}Error: Frontend build failed or dist/ is empty${NC}"
+        echo -e "${RED}The app will try to connect to dev server (localhost:1421) and fail${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Frontend built successfully${NC}"
+else
+    echo -e "${GREEN}✓ dist/ folder exists with content, skipping build${NC}"
+fi
+echo ""
+
 # Step 1: Generate Tauri iOS project
 echo -e "${YELLOW}Step 1: Generating Tauri iOS project...${NC}"
 npm run tauri ios init || echo "iOS project may already exist"
@@ -303,10 +319,20 @@ fi
 echo -e "${GREEN}✓ iOS project generated${NC}"
 echo ""
 
-# Step 2: Ensure assets directory exists
-echo -e "${YELLOW}Step 2: Setting up assets directory...${NC}"
+# Step 2: Copy frontend assets to iOS project
+echo -e "${YELLOW}Step 2: Copying frontend assets to iOS project...${NC}"
 mkdir -p src-tauri/gen/apple/assets
-echo -e "${GREEN}✓ Assets directory ready${NC}"
+
+# Copy the built frontend from dist/ to the iOS assets folder
+if [ -d "dist" ] && [ -n "$(ls -A dist 2>/dev/null)" ]; then
+    echo "Copying dist/ contents to src-tauri/gen/apple/assets/..."
+    cp -R dist/* src-tauri/gen/apple/assets/
+    echo -e "${GREEN}✓ Frontend assets copied ($(ls -1 src-tauri/gen/apple/assets/ | wc -l | tr -d ' ') items)${NC}"
+    ls -lh src-tauri/gen/apple/assets/ | head -5
+else
+    echo -e "${RED}Error: dist/ folder is empty${NC}"
+    exit 1
+fi
 echo ""
 
 # Step 3: Create wrapper script (same as GitHub Actions)
@@ -322,8 +348,15 @@ if [ ! -f "$PROJECT_FILE" ]; then
     exit 1
 fi
 
-# Create wrapper script (simplified version for local testing)
-cat > "$WRAPPER_SCRIPT" << 'WRAPPER_EOF'
+# Use the same wrapper script generator as GitHub Actions
+SCRIPT_GENERATOR=".github/scripts/create-wrapper-script.sh"
+if [ -f "$SCRIPT_GENERATOR" ]; then
+    echo "Using shared wrapper script generator..."
+    bash "$SCRIPT_GENERATOR" "$WRAPPER_SCRIPT"
+else
+    echo -e "${YELLOW}Warning: Shared script generator not found, using inline version${NC}"
+    # Create wrapper script (fallback inline version)
+    cat > "$WRAPPER_SCRIPT" << 'WRAPPER_EOF'
 #!/bin/bash
 set -e
 set -x
@@ -589,8 +622,9 @@ TAURI_EXIT_CODE=$?
 echo "Tauri build completed with exit code: $TAURI_EXIT_CODE"
 exit $TAURI_EXIT_CODE
 WRAPPER_EOF
+    chmod +x "$WRAPPER_SCRIPT"
+fi
 
-chmod +x "$WRAPPER_SCRIPT"
 echo -e "${GREEN}✓ Wrapper script created${NC}"
 echo ""
 
@@ -757,7 +791,19 @@ fi
 echo -e "${GREEN}✓ IPA created at $IPA_FILE${NC}"
 echo ""
 
-# Step 8: Upload to TestFlight
+# Step 8: Upload to TestFlight (optional - skip if SKIP_UPLOAD=1)
+if [ "${SKIP_UPLOAD:-0}" = "1" ]; then
+    echo -e "${GREEN}Skipping TestFlight upload (SKIP_UPLOAD=1)${NC}"
+    echo -e "${GREEN}Build complete! IPA ready for manual installation.${NC}"
+    echo ""
+    echo -e "${YELLOW}To install on device:${NC}"
+    echo "1. Open Xcode → Window → Devices and Simulators"
+    echo "2. Select your device"
+    echo "3. Drag and drop: $IPA_PATH"
+    echo ""
+    exit 0
+fi
+
 echo -e "${YELLOW}Step 8: Uploading to TestFlight...${NC}"
 
 # Check if we have App Store Connect API credentials

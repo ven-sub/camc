@@ -38,12 +38,15 @@ echo "SRCROOT=${SRCROOT}"
 echo "CONFIGURATION=${CONFIGURATION}"
 echo "PWD=$(pwd)"
 
-# Set environment variables to prevent dev server connection in CI
-export TAURI_SKIP_DEV_SERVER=1
-export TAURI_DEV_HOST="127.0.0.1:1"
+# Set environment variables to force production build (not dev server)
+# CRITICAL: Tauri uses debug vs release build profile to determine dev vs prod mode
+# We MUST use release profile to get bundled assets instead of dev server
 export RUST_BACKTRACE=full
 export CI=true
-export RELEASE_BUILD=true
+
+# Force Cargo to build in release mode (this is what Tauri checks)
+# Without this, Tauri builds in debug mode and tries to connect to devUrl
+export TAURI_CLI_PROFILE=release
 
 echo "=== Environment Variables Set ==="
 echo "TAURI_SKIP_DEV_SERVER=${TAURI_SKIP_DEV_SERVER}"
@@ -168,11 +171,35 @@ echo "npx location: $(which npx 2>/dev/null || echo 'not found')"
 echo "=== Running Tauri build to generate iOS FFI exports ==="
 cd "$PROJECT_ROOT" || { echo "ERROR: Failed to cd to $PROJECT_ROOT"; exit 1; }
 echo "Current directory: $(pwd)"
-echo "Running: npm run -- tauri ios xcode-script $*"
 echo "Log file location: $LOG_FILE"
 echo "Starting Tauri build at $(date)"
 
-npm run -- tauri ios xcode-script "$@"
+# Force --configuration to Release to ensure Cargo builds in release mode
+# Even if Xcode passes "Debug", we override it because we NEED release builds for production
+# This ensures Tauri uses bundled assets (frontendDist) instead of dev server (devUrl)
+FORCE_CONFIG="Release"
+echo "Forcing configuration to: $FORCE_CONFIG (overriding Xcode's ${CONFIGURATION:-unknown})"
+
+# Replace any --configuration argument with Release
+FILTERED_ARGS=()
+SKIP_NEXT=false
+for arg in "$@"; do
+    if [ "$SKIP_NEXT" = true ]; then
+        SKIP_NEXT=false
+        FILTERED_ARGS+=("$FORCE_CONFIG")
+        continue
+    fi
+    if [ "$arg" = "--configuration" ]; then
+        SKIP_NEXT=true
+        FILTERED_ARGS+=("$arg")
+    else
+        FILTERED_ARGS+=("$arg")
+    fi
+done
+
+echo "Running: npm run -- tauri ios xcode-script ${FILTERED_ARGS[*]}"
+
+npm run -- tauri ios xcode-script "${FILTERED_ARGS[@]}"
 TAURI_EXIT_CODE=$?
 echo "Tauri build completed with exit code: $TAURI_EXIT_CODE"
 echo "Log file contents:"

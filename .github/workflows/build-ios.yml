@@ -110,6 +110,23 @@ jobs:
         echo "Installed provisioning profile: $PROFILE_UUID"
         echo "Development team: $DEVELOPMENT_TEAM"
       
+    - name: Build Frontend
+      run: |
+        # Build frontend with Vite (CRITICAL - app needs bundled assets)
+        echo "Building frontend..."
+        npm run build
+        
+        # Verify dist folder exists and has content
+        if [ ! -d "dist" ] || [ -z "$(ls -A dist 2>/dev/null)" ]; then
+          echo "Error: Frontend build failed or dist/ is empty"
+          echo "The app will try to connect to dev server (localhost:1421) and fail"
+          exit 1
+        fi
+        
+        echo "✓ Frontend built successfully"
+        echo "dist/ contents:"
+        ls -lh dist/ | head -10
+    
     - name: Setup iOS project
       run: |
         # Initialize iOS project if it doesn't exist
@@ -274,9 +291,18 @@ jobs:
         PROVISIONING_PROFILE_UUID: ${{ env.PROVISIONING_PROFILE_UUID }}
         DEVELOPMENT_TEAM: ${{ env.DEVELOPMENT_TEAM }}
       run: |
-        # Ensure assets directory exists (Xcode project expects it)
+        # Copy frontend assets to iOS project (Xcode will bundle these into the app)
         mkdir -p src-tauri/gen/apple/assets
-        echo "Ensured assets directory exists"
+        
+        if [ -d "dist" ] && [ -n "$(ls -A dist 2>/dev/null)" ]; then
+          echo "Copying dist/ contents to src-tauri/gen/apple/assets/..."
+          cp -R dist/* src-tauri/gen/apple/assets/
+          echo "✓ Frontend assets copied ($(ls -1 src-tauri/gen/apple/assets/ | wc -l | tr -d ' ') items)"
+          ls -lh src-tauri/gen/apple/assets/ | head -5
+        else
+          echo "Error: dist/ folder is empty - frontend not built?"
+          exit 1
+        fi
         
         # Re-apply wrapper script modification to project file
         # Tauri might regenerate the project file, so we need to ensure our changes are in place
