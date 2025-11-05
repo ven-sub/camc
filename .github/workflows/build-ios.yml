@@ -119,9 +119,17 @@ jobs:
           echo "iOS project already exists, skipping init"
         fi
         
-        # Ensure export compliance key is in Info.plist (fixes "Missing Compliance" in TestFlight)
+        # Set build number to GitHub run number for auto-incrementing
+        BUILD_NUMBER="${{ github.run_number }}"
+        echo "Setting build number to: $BUILD_NUMBER"
+        
         INFO_PLIST="src-tauri/gen/apple/circuit-assistant-mobile-companion_iOS/Info.plist"
         if [ -f "$INFO_PLIST" ]; then
+          # Update CFBundleVersion to use build number instead of version string
+          perl -i -pe "s|<key>CFBundleVersion</key>\s*<string>[^<]*</string>|<key>CFBundleVersion</key>\n\t<string>$BUILD_NUMBER</string>|" "$INFO_PLIST"
+          echo "✓ Updated CFBundleVersion to: $BUILD_NUMBER"
+          
+          # Ensure export compliance key is in Info.plist (fixes "Missing Compliance" in TestFlight)
           if ! grep -q "ITSAppUsesNonExemptEncryption" "$INFO_PLIST"; then
             echo "Adding export compliance key to Info.plist..."
             # Add the key before the closing </dict> tag
@@ -130,6 +138,10 @@ jobs:
           else
             echo "✓ Export compliance key already present"
           fi
+          
+          # Display the version info for verification
+          echo "Version information in Info.plist:"
+          grep -A1 "CFBundleShortVersionString\|CFBundleVersion" "$INFO_PLIST" | head -4
         fi
 
     - name: Configure Xcode Project for Manual Signing

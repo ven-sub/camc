@@ -284,9 +284,18 @@ fi
 echo -e "${YELLOW}Step 1: Generating Tauri iOS project...${NC}"
 npm run tauri ios init || echo "iOS project may already exist"
 
+# Set build number - use timestamp for local builds to ensure uniqueness
+BUILD_NUMBER=$(date +%Y%m%d%H%M)
+echo "Setting build number to: $BUILD_NUMBER"
+
 # Ensure export compliance key is in Info.plist (fixes "Missing Compliance" in TestFlight)
 INFO_PLIST="src-tauri/gen/apple/circuit-assistant-mobile-companion_iOS/Info.plist"
 if [ -f "$INFO_PLIST" ]; then
+    # Update CFBundleVersion to use build number
+    perl -i -pe "s|<key>CFBundleVersion</key>\s*<string>[^<]*</string>|<key>CFBundleVersion</key>\n\t<string>$BUILD_NUMBER</string>|" "$INFO_PLIST"
+    echo -e "${GREEN}✓ Updated CFBundleVersion to: $BUILD_NUMBER${NC}"
+    
+    # Check if export compliance key already exists
     if ! grep -q "ITSAppUsesNonExemptEncryption" "$INFO_PLIST"; then
         echo -e "${YELLOW}Adding export compliance key to Info.plist...${NC}"
         # Add the key before the closing </dict> tag
@@ -295,6 +304,12 @@ if [ -f "$INFO_PLIST" ]; then
     else
         echo -e "${GREEN}✓ Export compliance key already present${NC}"
     fi
+    
+    # Display version info
+    echo "Version information:"
+    grep -A1 "CFBundleShortVersionString\|CFBundleVersion" "$INFO_PLIST" | head -4
+else
+    echo -e "${RED}Error: Info.plist not found${NC}"
 fi
 
 echo -e "${GREEN}✓ iOS project generated${NC}"
