@@ -12,6 +12,46 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Check for simulator mode
+if [ "${SIMULATOR:-0}" = "1" ]; then
+    echo "========================================"
+    echo "  Building for iOS Simulator (No Code Signing)"
+    echo "========================================"
+    
+    # Build frontend
+    echo "Building frontend..."
+    npm run build
+    
+    # Init iOS project
+    echo "Initializing iOS project..."
+    npm run tauri ios init
+    
+    # Copy frontend assets
+    echo "Copying assets..."
+    mkdir -p src-tauri/gen/apple/assets
+    cp -R dist/* src-tauri/gen/apple/assets/
+    
+    # Build for simulator
+    echo "Building for simulator..."
+    xcodebuild build \
+        -project "src-tauri/gen/apple/circuit-assistant-mobile-companion.xcodeproj" \
+        -scheme "circuit-assistant-mobile-companion_iOS" \
+        -configuration Release \
+        -destination "platform=iOS Simulator,OS=latest,name=iPhone 16" \
+        CONFIGURATION=release \
+        CODE_SIGN_IDENTITY="" \
+        CODE_SIGNING_REQUIRED=NO \
+        -allowProvisioningUpdates
+    
+    echo ""
+    echo "Build complete! To run in simulator:"
+    echo "1. Open Xcode"
+    echo "2. Open src-tauri/gen/apple/circuit-assistant-mobile-companion.xcodeproj"
+    echo "3. Select any iOS Simulator as destination"
+    echo "4. Press Run (⌘R)"
+    exit 0
+fi
+
 # Check prerequisites
 echo -e "${YELLOW}Checking prerequisites...${NC}"
 
@@ -734,6 +774,7 @@ ARCHIVE_OUTPUT=$(xcodebuild archive \
     CODE_SIGN_IDENTITY="Apple Distribution" \
     PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_UUID" \
     DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
+    CONFIGURATION=release \
     2>&1)
 ARCHIVE_EXIT_CODE=$?
 set -e  # Re-enable exit on error

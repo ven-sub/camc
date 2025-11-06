@@ -151,14 +151,21 @@ if [ -d "node_modules/.bin" ]; then
 fi
 
 # Set up iOS cross-compilation environment for Rust
-# Important: Don't set SDKROOT globally as it affects build scripts (which need macOS SDK)
-# Only set target-specific variables
+# CRITICAL: Build scripts run on macOS, but target compiles for iOS
+# We must explicitly set the macOS SDK for build scripts
+MACOS_SDK_PATH="$(xcrun --sdk macosx --show-sdk-path)"
+export SDKROOT="$MACOS_SDK_PATH"
+
+# Target-specific settings for iOS cross-compilation
 export CC_aarch64_apple_ios="$(xcrun --sdk iphoneos --find clang)"
 export CXX_aarch64_apple_ios="$(xcrun --sdk iphoneos --find clang++)"
 export AR_aarch64_apple_ios="$(xcrun --sdk iphoneos --find ar)"
 export CARGO_TARGET_AARCH64_APPLE_IOS_LINKER="$(xcrun --sdk iphoneos --find clang)"
-# Build scripts should use host toolchain, so ensure macOS SDK for them
-export MACOSX_DEPLOYMENT_TARGET="10.15"
+
+# Ensure build scripts use macOS SDK (not iOS SDK)
+export MACOSX_DEPLOYMENT_TARGET="11.0"
+export CFLAGS_aarch64_apple_darwin="-isysroot $MACOS_SDK_PATH"
+export CXXFLAGS_aarch64_apple_darwin="-isysroot $MACOS_SDK_PATH"
 
 echo "Running: npm run -- tauri ios xcode-script $*"
 echo "PATH: $PATH"

@@ -446,6 +446,7 @@ jobs:
           CODE_SIGN_IDENTITY="Apple Distribution" \
           PROVISIONING_PROFILE_SPECIFIER="$PROVISIONING_PROFILE_UUID" \
           DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
+          CONFIGURATION=release \
           2>&1 | tee "$FULL_LOG"; then
           echo "========================================="
           echo "Archive failed. Full unfiltered output:"

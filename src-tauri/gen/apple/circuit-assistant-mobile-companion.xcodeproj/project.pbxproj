@@ -19,6 +19,7 @@
 		B25A290C5F74D54F85F1D940 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 63A9290A3DD6570E48359BA9 /* Assets.xcassets */; };
 		C641B004FFE450E93F7D2695 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88837FD9E01689D817D8AE59 /* UIKit.framework */; };
 		D7FE5482348C4D7A48AC9D98 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = E7A1675EE30D85133DA6F037 /* LaunchScreen.storyboard */; };
+		D85AEC8F3A553813F4C8FFE9 /* libapp.a in Resources */ = {isa = PBXBuildFile; fileRef = 70886255C833765A56801799 /* libapp.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +32,7 @@
 		3E7020756E4491E3913C19DD /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };
 		4D67938AF5E1238F6D51DE25 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
 		63A9290A3DD6570E48359BA9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		70886255C833765A56801799 /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
 		81CE01A511C219060A14E786 /* circuit-assistant-mobile-companion_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "circuit-assistant-mobile-companion_iOS.entitlements"; sourceTree = "<group>"; };
 		88837FD9E01689D817D8AE59 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		93548A00C61156C271E97CAF /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
@@ -62,6 +64,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		11C8F8DB0396AA307F45061C /* debug */ = {
+			isa = PBXGroup;
+			children = (
+				70886255C833765A56801799 /* libapp.a */,
+			);
+			path = debug;
+			sourceTree = "<group>";
+		};
 		2352E5EFC77FD51CBBC6CE82 /* src */ = {
 			isa = PBXGroup;
 			children = (
@@ -136,9 +146,18 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		E154948717FC228414222586 /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				11C8F8DB0396AA307F45061C /* debug */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
 		E27138605E9DE2084A24DE07 /* Externals */ = {
 			isa = PBXGroup;
 			children = (
+				E154948717FC228414222586 /* arm64 */,
 			);
 			path = Externals;
 			sourceTree = "<group>";
@@ -150,6 +169,13 @@
 				EFD23BCA26B9A2A49417153D /* Info.plist */,
 			);
 			path = "circuit-assistant-mobile-companion_iOS";
+			sourceTree = "<group>";
+		};
+		"TEMP_91DD7F7C-62D2-4CE1-806C-E2E115F8E49E" /* x86_64 */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = x86_64;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -211,6 +237,7 @@
 				B25A290C5F74D54F85F1D940 /* Assets.xcassets in Resources */,
 				D7FE5482348C4D7A48AC9D98 /* LaunchScreen.storyboard in Resources */,
 				4CDC9DA43652FBB3A9B4F9ED /* assets in Resources */,
+				D85AEC8F3A553813F4C8FFE9 /* libapp.a in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -236,7 +263,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "${SRCROOT}/build_rust_wrapper.sh -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration ${CONFIGURATION:?} ${ARCHS:?}";
+			shellScript = "npm run -- tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration ${CONFIGURATION:?} 0 ${ARCHS:?}";
 		};
 /* End PBXShellScriptBuildPhase section */
 
