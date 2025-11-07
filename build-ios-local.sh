@@ -729,7 +729,8 @@ echo -e "${YELLOW}Step 6: Archiving iOS app...${NC}"
 
 # Update build number and ensure export compliance key just before archiving
 # (Tauri/Xcode may regenerate Info.plist earlier, so we do this at the last moment)
-BUILD_NUMBER=$(date +%Y%m%d%H%M)
+# Format: YYYYMMDD.HHMM (e.g., 20251107.1430) - consistent with GitHub (YYYYMMDD.RUN_NUMBER)
+BUILD_NUMBER="$(date +%Y%m%d).$(date +%H%M)"
 INFO_PLIST="src-tauri/gen/apple/circuit-assistant-mobile-companion_iOS/Info.plist"
 if [ -f "$INFO_PLIST" ]; then
     echo "Updating build number to: $BUILD_NUMBER"

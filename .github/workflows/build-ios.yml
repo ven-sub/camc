@@ -15,6 +15,7 @@ jobs:
   build-ios:
     name: Build iOS
     runs-on: macos-latest
+    timeout-minutes: 20
     
     steps:
     - name: Checkout code
@@ -91,6 +92,8 @@ jobs:
         security create-keychain -p "" build.keychain
         security default-keychain -s build.keychain
         security unlock-keychain -p "" build.keychain
+        # Set keychain timeout to 10 minutes (600 seconds) to prevent auto-lock during build
+        security set-keychain-settings -t 600 -l ~/Library/Keychains/build.keychain
         security import /tmp/ios_certificate.p12 -k ~/Library/Keychains/build.keychain -P "$IOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
         rm /tmp/ios_certificate.p12
@@ -284,6 +287,7 @@ jobs:
         fi
       
     - name: Build iOS IPA for TestFlight
+      timeout-minutes: 12
       env:
         APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
         APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
@@ -407,9 +411,17 @@ jobs:
         echo "=== Checking for existing wrapper script logs ==="
         ls -la /tmp/tauri-wrapper-*.log 2>/dev/null || echo "No existing wrapper logs found"
         
+        # Ensure keychain is unlocked before archive/codesign operations
+        # This prevents codesign from hanging if keychain auto-locked
+        echo "=== Ensuring keychain is unlocked for codesigning ==="
+        security unlock-keychain -p "" ~/Library/Keychains/build.keychain
+        security set-keychain-settings -t 600 -l ~/Library/Keychains/build.keychain
+        echo "✓ Keychain verified unlocked"
+        
         # Update build number and ensure export compliance key just before archiving
         # (Tauri/Xcode may regenerate Info.plist earlier, so we do this at the last moment)
-        BUILD_NUMBER="${{ github.run_number }}"
+        # Format: YYYYMMDD.RUN_NUMBER (e.g., 20251107.15) - consistent with local builds
+        BUILD_NUMBER="$(date +%Y%m%d).${{ github.run_number }}"
         INFO_PLIST="src-tauri/gen/apple/circuit-assistant-mobile-companion_iOS/Info.plist"
         if [ -f "$INFO_PLIST" ]; then
           echo "Updating build number to: $BUILD_NUMBER"
@@ -499,6 +511,7 @@ jobs:
         echo "Built IPA: $IPA_FILE"
       
     - name: Upload to TestFlight
+      timeout-minutes: 5
       env:
         APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
         APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
