@@ -359,18 +359,18 @@ fi
 echo -e "${GREEN}✓ iOS project generated${NC}"
 echo ""
 
-# Step 2: Copy frontend assets to iOS project
-echo -e "${YELLOW}Step 2: Copying frontend assets to iOS project...${NC}"
-mkdir -p src-tauri/gen/apple/assets
+# Step 2: Verify frontend assets are ready
+echo -e "${YELLOW}Step 2: Verifying frontend assets are ready...${NC}"
 
-# Copy the built frontend from dist/ to the iOS assets folder
+# Verify the built frontend exists in dist/ (Tauri will bundle from here automatically)
+# tauri.conf.json specifies frontendDist: "../dist" so Tauri knows where to find assets
 if [ -d "dist" ] && [ -n "$(ls -A dist 2>/dev/null)" ]; then
-    echo "Copying dist/ contents to src-tauri/gen/apple/assets/..."
-    cp -R dist/* src-tauri/gen/apple/assets/
-    echo -e "${GREEN}✓ Frontend assets copied ($(ls -1 src-tauri/gen/apple/assets/ | wc -l | tr -d ' ') items)${NC}"
-    ls -lh src-tauri/gen/apple/assets/ | head -5
+    echo -e "${GREEN}✓ Frontend assets ready in dist/ ($(ls -1 dist/ | wc -l | tr -d ' ') items)${NC}"
+    ls -lh dist/ | head -5
+    echo "Tauri will bundle these assets from dist/ per frontendDist config"
 else
-    echo -e "${RED}Error: dist/ folder is empty${NC}"
+    echo -e "${RED}ERROR: dist/ directory is empty or doesn't exist - frontend build failed${NC}"
+    ls -la dist/ || echo "dist/ does not exist"
     exit 1
 fi
 echo ""

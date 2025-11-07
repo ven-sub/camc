@@ -295,16 +295,15 @@ jobs:
         PROVISIONING_PROFILE_UUID: ${{ env.PROVISIONING_PROFILE_UUID }}
         DEVELOPMENT_TEAM: ${{ env.DEVELOPMENT_TEAM }}
       run: |
-        # Copy frontend assets to iOS project (Xcode will bundle these into the app)
-        mkdir -p src-tauri/gen/apple/assets
-        
+        # Verify frontend assets are ready (Tauri will bundle from dist/ automatically)
+        # tauri.conf.json specifies frontendDist: "../dist" so Tauri knows where to find assets
         if [ -d "dist" ] && [ -n "$(ls -A dist 2>/dev/null)" ]; then
-          echo "Copying dist/ contents to src-tauri/gen/apple/assets/..."
-          cp -R dist/* src-tauri/gen/apple/assets/
-          echo "✓ Frontend assets copied ($(ls -1 src-tauri/gen/apple/assets/ | wc -l | tr -d ' ') items)"
-          ls -lh src-tauri/gen/apple/assets/ | head -5
+          echo "✓ Frontend assets ready in dist/ ($(ls -1 dist/ | wc -l | tr -d ' ') items)"
+          ls -lh dist/ | head -5
+          echo "Tauri will bundle these assets from dist/ per frontendDist config"
         else
-          echo "Error: dist/ folder is empty - frontend not built?"
+          echo "ERROR: dist/ directory is empty or doesn't exist - frontend build failed"
+          ls -la dist/ || echo "dist/ does not exist"
           exit 1
         fi
         
