@@ -525,4 +525,6 @@ jobs:
         name: camc-ios-${{ github.ref_name }}
         path: |
           src-tauri/gen/ios/build/
+          ${{ env.IPA_PATH }}
+          build/ios-export/*.ipa
           build/*.ipa
