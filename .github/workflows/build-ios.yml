@@ -338,6 +338,20 @@ jobs:
         else
           echo "⚠ Warning: Project file or wrapper script not found, skipping re-application"
         fi
+
+        # Diagnostic: show that the wrapper script exists and is executable; make it executable if needed
+        echo "=== Wrapper script diagnostics ==="
+        if [ -f "$WRAPPER_SCRIPT" ]; then
+          ls -la "$WRAPPER_SCRIPT" || true
+          echo "Ensuring wrapper script is executable..."
+          chmod +x "$WRAPPER_SCRIPT" || true
+          echo "After chmod:" && ls -la "$WRAPPER_SCRIPT" || true
+          echo "Wrapper script head (first 200 lines):" || true
+          sed -n '1,200p' "$WRAPPER_SCRIPT" || true
+        else
+          echo "Wrapper script not found at expected path: $WRAPPER_SCRIPT"
+        fi
+        echo "=== End wrapper diagnostics ==="
         
         # Note: We no longer pre-build Rust libraries here
         # Tauri build will run during Xcode archive phase (via wrapper script)
@@ -583,3 +597,15 @@ jobs:
           ${{ env.IPA_PATH }}
           build/ios-export/*.ipa
           build/*.ipa
+
+    - name: Upload xcodebuild & wrapper logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: xcodebuild-logs-${{ github.run_id }}
+        path: |
+          /tmp/xcodebuild-archive-full.log
+          /tmp/tauri-wrapper-*.log
+          /tmp/tauri-wrapper.log
+          **/tauri-wrapper.log
+          **/tauri-wrapper-*.log
