@@ -64,6 +64,11 @@
       "appimage": {
         "bundleMediaFramework": false
       }
+    },
+    "iOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "13.0",
+      "developmentTeam": null
     }
   },
   "plugins": {

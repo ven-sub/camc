@@ -34,18 +34,37 @@ NOTE:Circuit Overseer Contact\r\n\
 END:VCARD\r\n".to_string()
 }
 
+/// Get the appropriate export directory based on platform
+fn get_export_directory() -> Result<PathBuf, String> {
+    // On iOS/Android, use document directory (user accessible)
+    #[cfg(any(target_os = "ios", target_os = "android"))]
+    {
+        let doc_dir = dirs::document_dir()
+            .ok_or("Failed to get document directory")?;
+        Ok(doc_dir)
+    }
+    
+    // On desktop, use app data directory
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    {
+        let app_dir = dirs::data_local_dir()
+            .ok_or("Failed to get app data directory")?
+            .join("org.circuitassistant.camc");
+        
+        // Create directory if it doesn't exist
+        fs::create_dir_all(&app_dir).map_err(|e| e.to_string())?;
+        
+        Ok(app_dir)
+    }
+}
+
 #[tauri::command]
 pub fn export_ics() -> Result<String, String> {
-    // Get app data directory
-    let app_dir = dirs::data_local_dir()
-        .ok_or("Failed to get app data directory")?
-        .join("org.circuitassistant.camc");
-    
-    // Create directory if it doesn't exist
-    fs::create_dir_all(&app_dir).map_err(|e| e.to_string())?;
+    // Get the appropriate export directory
+    let export_dir = get_export_directory()?;
     
     // Create ICS file path
-    let file_path = app_dir.join("sample_event.ics");
+    let file_path = export_dir.join("sample_event.ics");
     
     // Get ICS content from helper function
     let ics_content = create_sample_ics_content();
@@ -59,16 +78,11 @@ pub fn export_ics() -> Result<String, String> {
 
 #[tauri::command]
 pub fn export_vcard() -> Result<String, String> {
-    // Get app data directory
-    let app_dir = dirs::data_local_dir()
-        .ok_or("Failed to get app data directory")?
-        .join("org.circuitassistant.camc");
-    
-    // Create directory if it doesn't exist
-    fs::create_dir_all(&app_dir).map_err(|e| e.to_string())?;
+    // Get the appropriate export directory
+    let export_dir = get_export_directory()?;
     
     // Create vCard file path
-    let file_path = app_dir.join("sample_contact.vcf");
+    let file_path = export_dir.join("sample_contact.vcf");
     
     // Get vCard content from helper function
     let vcard_content = create_sample_vcard_content();

@@ -126,12 +126,15 @@ const selectedEvent = ref<CalendarEvent | null>(null)
 const openFileSelector = async () => {
   try {
     // Open file dialog to select JSON file
+    // On iOS, this will open the Files app document picker
     const selected = await open({
       multiple: false,
+      directory: false,
       filters: [{
-        name: 'JSON',
+        name: 'JSON Files',
         extensions: ['json']
-      }]
+      }],
+      title: 'Select Event JSON File'
     })
 
     if (selected && typeof selected === 'string') {
