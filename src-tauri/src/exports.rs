@@ -1,5 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
+// Use Tauri path helpers on mobile to reliably resolve the app Documents directory
+#[cfg(any(target_os = "ios", target_os = "android"))]
+use tauri::api::path::document_dir as tauri_document_dir;
 use serde::Serialize;
 
 #[cfg(any(target_os = "ios", target_os = "android"))]
@@ -46,13 +49,14 @@ fn get_export_directory() -> Result<PathBuf, String> {
     // This is accessible via Files app -> "On My iPhone/iPad" -> App Name
     #[cfg(any(target_os = "ios", target_os = "android"))]
     {
-        // Get the app's documents directory (not the system Documents)
-        let doc_dir = dirs::document_dir()
+        // Prefer Tauri's path helper on mobile to reliably find the app sandbox Documents
+        let doc_dir = tauri_document_dir()
+            .or_else(|| dirs::document_dir())
             .ok_or("Failed to get document directory")?;
-        
+
         // Ensure directory exists
         fs::create_dir_all(&doc_dir).map_err(|e| e.to_string())?;
-        
+
         Ok(doc_dir)
     }
     
@@ -231,5 +235,20 @@ pub fn create_sample_events() -> Result<String, String> {
     
     // Return the file path as a string
     Ok(file_path.to_string_lossy().to_string())
+}
+
+/// Ensure that a small placeholder file exists in the Documents directory so that
+/// the Files app will display the app folder on device installs (TestFlight/App Store).
+#[tauri::command]
+pub fn ensure_documents_placeholder() -> Result<String, String> {
+    let export_dir = get_export_directory()?;
+    let placeholder = export_dir.join("CircuitAssistant-README.txt");
+
+    if !placeholder.exists() {
+        let content = "Circuit Assistant app files go in this folder.\n";
+        fs::write(&placeholder, content).map_err(|e| e.to_string())?;
+    }
+
+    Ok(placeholder.to_string_lossy().to_string())
 }
 

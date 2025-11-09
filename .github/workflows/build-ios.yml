@@ -10,6 +10,11 @@ on:
         description: 'Version to build (e.g., v1.0.0)'
         required: true
         type: string
+      force_regenerate_xcode:
+        description: 'If true, remove and re-generate the src-tauri/gen/apple Xcode project from project.yml before archiving (default: false)'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   build-ios:
@@ -406,6 +411,37 @@ jobs:
         xcodebuild -showBuildSettings -project "$XCODE_PROJECT" -scheme "$SCHEME" -configuration Release || true
         echo "=== End diagnostics ==="
         
+        # Print the generated Info.plist before any regeneration so we can see what will be archived
+        echo "=== Generated Info.plist (before optional regeneration) ==="
+        if [ -f "$INFO_PLIST" ]; then
+          plutil -p "$INFO_PLIST" || cat "$INFO_PLIST"
+        else
+          echo "Info.plist not found at expected path: $INFO_PLIST"
+        fi
+        echo "=== End Info.plist (before) ==="
+
+        # Conditionally force regeneration of the generated Xcode project from project.yml
+        # This is gated by the workflow_dispatch input 'force_regenerate_xcode' (default: false)
+        if [ "${{ github.event.inputs.force_regenerate_xcode }}" = "true" ]; then
+          echo "force_regenerate_xcode=true — regenerating src-tauri/gen/apple from project.yml"
+          # Backup any existing generated project just in case
+          if [ -d "src-tauri/gen/apple" ]; then
+            mv src-tauri/gen/apple src-tauri/gen/apple.backup.$(date +%s) || true
+          fi
+          # Regenerate the Xcode project from project.yml
+          npx @tauri-apps/cli ios init
+
+          echo "=== Generated Info.plist (after regeneration) ==="
+          if [ -f "$INFO_PLIST" ]; then
+            plutil -p "$INFO_PLIST" || cat "$INFO_PLIST"
+          else
+            echo "Info.plist still not found after regeneration at: $INFO_PLIST"
+          fi
+          echo "=== End Info.plist (after) ==="
+        else
+          echo "Skipping forced regeneration of the generated Xcode project (force_regenerate_xcode not set)"
+        fi
+        
         # Check for wrapper script log files before starting build
         echo "=== Checking for existing wrapper script logs ==="
         ls -la /tmp/tauri-wrapper-*.log 2>/dev/null || echo "No existing wrapper logs found"
@@ -435,6 +471,25 @@ jobs:
             echo "✓ Export compliance key added"
           else
             echo "✓ Export compliance key confirmed present"
+          fi
+
+          # Ensure UIFileSharingEnabled and LSSupportsOpeningDocumentsInPlace are present and true
+          if ! grep -q "UIFileSharingEnabled" "$INFO_PLIST"; then
+            echo "Adding UIFileSharingEnabled = true to Info.plist..."
+            perl -i -0pe 's|</dict>\s*</plist>|\t<key>UIFileSharingEnabled</key>\n\t<true/>\n</dict>\n</plist>|' "$INFO_PLIST"
+            echo "✓ UIFileSharingEnabled added"
+          else
+            echo "UIFileSharingEnabled already present; ensuring it's true"
+            /usr/libexec/PlistBuddy -c "Set :UIFileSharingEnabled true" "$INFO_PLIST" || echo "Failed to set UIFileSharingEnabled via PlistBuddy"
+          fi
+
+          if ! grep -q "LSSupportsOpeningDocumentsInPlace" "$INFO_PLIST"; then
+            echo "Adding LSSupportsOpeningDocumentsInPlace = true to Info.plist..."
+            perl -i -0pe 's|</dict>\s*</plist>|\t<key>LSSupportsOpeningDocumentsInPlace</key>\n\t<true/>\n</dict>\n</plist>|' "$INFO_PLIST"
+            echo "✓ LSSupportsOpeningDocumentsInPlace added"
+          else
+            echo "LSSupportsOpeningDocumentsInPlace already present; ensuring it's true"
+            /usr/libexec/PlistBuddy -c "Set :LSSupportsOpeningDocumentsInPlace true" "$INFO_PLIST" || echo "Failed to set LSSupportsOpeningDocumentsInPlace via PlistBuddy"
           fi
           
           # Display final version info
