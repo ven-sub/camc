@@ -21,7 +21,9 @@ fn main() {
             commands::get_platform,
             commands::test_db_connection,
             exports::export_ics,
-            exports::export_vcard
+            exports::export_vcard,
+            exports::get_ics_content,
+            exports::get_vcard_content
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -53,6 +53,17 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         CFBundleShortVersionString: 0.1.0
         CFBundleVersion: "0.1.0"
+        UISupportsDocumentBrowser: true
+        LSSupportsOpeningDocumentsInPlace: true
+        UIFileSharingEnabled: true
+        ITSAppUsesNonExemptEncryption: false
+        UTImportedTypeDeclarations:
+          - UTTypeConformsTo: [public.json, public.data]
+            UTTypeDescription: JSON Document
+            UTTypeIdentifier: public.json
+            UTTypeTagSpecification:
+              public.filename-extension: [json]
+              public.mime-type: [application/json]
     entitlements:
       path: circuit-assistant-mobile-companion_iOS/circuit-assistant-mobile-companion_iOS.entitlements
     scheme:

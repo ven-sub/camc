@@ -1,6 +1,9 @@
 use std::fs;
 use std::path::PathBuf;
 
+#[cfg(any(target_os = "ios", target_os = "android"))]
+use tauri::Manager;
+
 /// Creates sample ICS calendar content
 fn create_sample_ics_content() -> String {
     "BEGIN:VCALENDAR\r\n\
@@ -60,14 +63,14 @@ fn get_export_directory() -> Result<PathBuf, String> {
 
 #[tauri::command]
 pub fn export_ics() -> Result<String, String> {
+    // Get ICS content
+    let ics_content = create_sample_ics_content();
+    
     // Get the appropriate export directory
     let export_dir = get_export_directory()?;
     
     // Create ICS file path
-    let file_path = export_dir.join("sample_event.ics");
-    
-    // Get ICS content from helper function
-    let ics_content = create_sample_ics_content();
+    let file_path = export_dir.join("CircuitOverseerVisit.ics");
     
     // Write to file
     fs::write(&file_path, ics_content).map_err(|e| e.to_string())?;
@@ -78,19 +81,31 @@ pub fn export_ics() -> Result<String, String> {
 
 #[tauri::command]
 pub fn export_vcard() -> Result<String, String> {
+    // Get vCard content
+    let vcard_content = create_sample_vcard_content();
+    
     // Get the appropriate export directory
     let export_dir = get_export_directory()?;
     
     // Create vCard file path
-    let file_path = export_dir.join("sample_contact.vcf");
-    
-    // Get vCard content from helper function
-    let vcard_content = create_sample_vcard_content();
+    let file_path = export_dir.join("JohnSmith.vcf");
     
     // Write to file
     fs::write(&file_path, vcard_content).map_err(|e| e.to_string())?;
     
     // Return the file path as a string
     Ok(file_path.to_string_lossy().to_string())
+}
+
+/// Get ICS content - exposed for frontend to handle save on mobile
+#[tauri::command]
+pub fn get_ics_content() -> String {
+    create_sample_ics_content()
+}
+
+/// Get vCard content - exposed for frontend to handle save on mobile
+#[tauri::command]
+pub fn get_vcard_content() -> String {
+    create_sample_vcard_content()
 }
 
