@@ -11,6 +11,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "fullscreen": false,
         "resizable": true,
         "title": "Circuit Assistant Mobile Companion",
@@ -21,8 +22,10 @@
       }
     ],
     "security": {
-      "csp": null
-    }
+      "csp": null,
+      "capabilities": ["default", "mobile"]
+    },
+    "withGlobalTauri": true
   },
   "bundle": {
     "active": true,
@@ -64,27 +67,6 @@
     }
   },
   "plugins": {
-    "fs": {
-      "all": true,
-      "readFile": true,
-      "writeFile": true,
-      "readDir": true,
-      "copyFile": true,
-      "createDir": true,
-      "removeDir": true,
-      "removeFile": true,
-      "renameFile": true,
-      "exists": true,
-      "scope": ["$APPDATA", "$APPDATA/**", "$HOME", "$HOME/**"]
-    },
-    "dialog": {
-      "all": true,
-      "ask": true,
-      "confirm": true,
-      "message": true,
-      "open": true,
-      "save": true
-    },
     "shell": {
       "all": false,
       "open": true

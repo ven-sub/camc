@@ -8,14 +8,9 @@ const routes = [
     component: CalendarPage
   },
   {
-    path: '/congregations',
-    name: 'Congregations',
-    component: () => import('../pages/CongregationsPage.vue')
-  },
-  {
-    path: '/reports',
-    name: 'Reports',
-    component: () => import('../pages/ReportsPage.vue')
+    path: '/prototypes',
+    name: 'Prototypes',
+    component: () => import('../pages/PrototypesPage.vue')
   },
   {
     path: '/settings',

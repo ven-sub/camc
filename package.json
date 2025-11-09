@@ -22,8 +22,11 @@
   },
   "dependencies": {
     "@quasar/extras": "^1.17.0",
+    "@quasar/quasar-ui-qcalendar": "^4.0.0-beta.20",
     "@quasar/vite-plugin": "^1.10.0",
     "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "@tauri-apps/plugin-fs": "^2.0.0",
     "quasar": "^2.18.5",
     "vue": "^3.4.0",
     "vue-router": "^4.2.5"

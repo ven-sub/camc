@@ -83,16 +83,10 @@ const menuItems = [
     route: '/'
   },
   {
-    name: 'congregations',
-    label: 'Congregations',
-    icon: 'groups',
-    route: '/congregations'
-  },
-  {
-    name: 'reports',
-    label: 'Reports',
-    icon: 'assessment',
-    route: '/reports'
+    name: 'prototypes',
+    label: 'Prototypes',
+    icon: 'science',
+    route: '/prototypes'
   },
   {
     name: 'settings',
