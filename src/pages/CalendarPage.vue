@@ -90,6 +90,58 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- File Selection Dialog -->
+    <q-dialog v-model="showFileDialog">
+      <q-card style="min-width: 400px">
+        <q-card-section>
+          <div class="text-h6">Select JSON File</div>
+          <div class="text-caption text-grey-7">
+            Files from app's Documents directory
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-list v-if="availableFiles.length > 0" bordered separator>
+            <q-item
+              v-for="file in availableFiles"
+              :key="file.path"
+              clickable
+              @click="selectFile(file)"
+            >
+              <q-item-section avatar>
+                <q-icon name="description" color="primary" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ file.name }}</q-item-label>
+                <q-item-label caption>{{ formatFileSize(file.size) }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+          
+          <div v-else class="text-center q-pa-md">
+            <q-icon name="folder_open" size="48px" color="grey-5" class="q-mb-md" />
+            <div class="text-body2 text-grey-7">
+              No JSON files found in the Documents directory.
+            </div>
+            <div class="text-caption text-grey-6 q-mt-sm">
+              Place your event JSON files in the app's Documents folder using the Files app.
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="primary" v-close-popup />
+          <q-btn 
+            flat 
+            label="Refresh" 
+            color="primary" 
+            icon="refresh"
+            @click="loadAvailableFiles"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -98,8 +150,7 @@ import { ref } from 'vue'
 import { useQuasar } from 'quasar'
 import { QCalendarMonth } from '@quasar/quasar-ui-qcalendar'
 import '@quasar/quasar-ui-qcalendar/dist/index.css'
-import { open } from '@tauri-apps/plugin-dialog'
-import { readTextFile } from '@tauri-apps/plugin-fs'
+import { invoke } from '@tauri-apps/api/core'
 
 const $q = useQuasar()
 
@@ -122,39 +173,52 @@ const events = ref<CalendarEvent[]>([])
 const showEventDialog = ref(false)
 const selectedEvent = ref<CalendarEvent | null>(null)
 
+// File selection dialog
+interface FileInfo {
+  name: string
+  path: string
+  size: number
+}
+
+const showFileDialog = ref(false)
+const availableFiles = ref<FileInfo[]>([])
+
 // Methods
 const openFileSelector = async () => {
-  try {
-    // Open file dialog to select JSON file
-    // On iOS, this will open the Files app document picker
-    const selected = await open({
-      multiple: false,
-      directory: false,
-      filters: [{
-        name: 'JSON Files',
-        extensions: ['json']
-      }],
-      title: 'Select Event JSON File'
-    })
+  await loadAvailableFiles()
+  showFileDialog.value = true
+}
 
-    if (selected && typeof selected === 'string') {
-      await loadEventsFromFile(selected)
-    }
+const loadAvailableFiles = async () => {
+  try {
+    const files = await invoke<FileInfo[]>('list_json_files')
+    availableFiles.value = files
   } catch (error) {
-    console.error('Error opening file selector:', error)
+    console.error('Error loading files:', error)
     $q.notify({
       type: 'negative',
-      message: 'Failed to open file selector',
+      message: 'Failed to load available files',
       caption: error instanceof Error ? error.message : 'Unknown error',
       position: 'top'
     })
   }
 }
 
+const selectFile = async (file: FileInfo) => {
+  showFileDialog.value = false
+  await loadEventsFromFile(file.path)
+}
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 const loadEventsFromFile = async (filePath: string) => {
   try {
-    // Read the JSON file
-    const contents = await readTextFile(filePath)
+    // Read the JSON file using the Rust command
+    const contents = await invoke<string>('read_json_file', { filePath })
     
     // Parse JSON
     const jsonData = JSON.parse(contents)

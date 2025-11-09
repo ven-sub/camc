@@ -187,6 +187,30 @@ for arg in "$@"; do
 done
 
 echo "Running: npm run -- tauri ios xcode-script ${FILTERED_ARGS[*]}"
+# If the static libs are already supplied in Externals, skip invoking the Tauri CLI
+# This prevents the Xcode build phase from trying to start a websocket connection
+# when we already prebuilt and placed the expected `libapp.a` files.
+EXTERNALS_CANDIDATES=(
+  "$PROJECT_ROOT/src-tauri/gen/apple/Externals/arm64/${CONFIGURATION:-release}/libapp.a"
+  "$PROJECT_ROOT/src-tauri/gen/apple/Externals/x86_64/${CONFIGURATION:-release}/libapp.a"
+  "$PROJECT_ROOT/src-tauri/gen/apple/Externals/arm64/release/libapp.a"
+  "$PROJECT_ROOT/src-tauri/gen/apple/Externals/x86_64/release/libapp.a"
+  "$SRCROOT/Externals/arm64/${CONFIGURATION:-release}/libapp.a"
+  "$SRCROOT/Externals/x86_64/${CONFIGURATION:-release}/libapp.a"
+)
+
+FOUND=0
+for p in "${EXTERNALS_CANDIDATES[@]}"; do
+    if [ -f "$p" ]; then
+        echo "Found prebuilt libapp.a: $p"
+        FOUND=1
+    fi
+done
+
+if [ "$FOUND" -eq 1 ]; then
+    echo "Prebuilt libapp.a found, skipping Tauri xcode-script invocation."
+    exit 0
+fi
 
 npm run -- tauri ios xcode-script "${FILTERED_ARGS[@]}"
 TAURI_EXIT_CODE=$?

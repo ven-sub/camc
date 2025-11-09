@@ -30,6 +30,16 @@ if [ "${SIMULATOR:-0}" = "1" ]; then
     echo "Copying assets..."
     mkdir -p src-tauri/gen/apple/assets
     cp -R dist/* src-tauri/gen/apple/assets/
+
+    # Build device+sim libs and produce an XCFramework (and compatibility .a copies)
+    echo "Building device+sim libs and producing an XCFramework (scripts/build-rust-ios.sh)..."
+    if [ -x "scripts/build-rust-ios.sh" ]; then
+        scripts/build-rust-ios.sh || echo "Warning: scripts/build-rust-ios.sh failed"
+    else
+        echo "Warning: scripts/build-rust-ios.sh not found or not executable; falling back to single-target simulator build"
+        SIM_SDKROOT=$(xcrun --sdk iphonesimulator --show-sdk-path 2>/dev/null || true)
+        (cd src-tauri && SDKROOT="$SIM_SDKROOT" cargo build --release --target aarch64-apple-ios-sim) || echo "Warning: cargo build for simulator failed"
+    fi
     
     # Build for simulator
     echo "Building for simulator..."

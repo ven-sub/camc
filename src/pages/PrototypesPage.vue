@@ -39,6 +39,21 @@
               <strong>Saved to:</strong> {{ vcardFilePath }}
             </div>
           </div>
+
+          <!-- Sample Events Export -->
+          <div class="row items-center q-gutter-sm">
+            <q-btn
+              color="accent"
+              icon="event_note"
+              label="Create Sample Events"
+              @click="createSampleEvents"
+              :loading="eventsLoading"
+            />
+            <div v-if="eventsFilePath" class="text-caption">
+              <q-icon name="check_circle" color="positive" class="q-mr-xs" />
+              <strong>Saved to:</strong> {{ eventsFilePath }}
+            </div>
+          </div>
         </div>
       </q-card-section>
 
@@ -142,6 +157,40 @@ const exportVCard = async () => {
     })
   } finally {
     vcardLoading.value = false
+  }
+}
+
+// Sample Events Export
+const eventsLoading = ref(false)
+const eventsFilePath = ref('')
+
+const createSampleEvents = async () => {
+  eventsLoading.value = true
+  eventsFilePath.value = ''
+  
+  try {
+    // Create sample events JSON file in the Documents directory
+    const filePath = await invoke<string>('create_sample_events')
+    eventsFilePath.value = filePath
+    
+    $q.notify({
+      type: 'positive',
+      message: 'Sample events file created successfully!',
+      caption: isMobile.value 
+        ? 'Saved to Files app → Circuit Assistant → events-sample.json' 
+        : '5 sample events created',
+      position: 'top'
+    })
+  } catch (error) {
+    console.error('Sample events creation failed:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Failed to create sample events file',
+      caption: error instanceof Error ? error.message : 'Unknown error',
+      position: 'top'
+    })
+  } finally {
+    eventsLoading.value = false
   }
 }
 </script>

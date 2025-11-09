@@ -19,7 +19,7 @@
 		B25A290C5F74D54F85F1D940 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 63A9290A3DD6570E48359BA9 /* Assets.xcassets */; };
 		C641B004FFE450E93F7D2695 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88837FD9E01689D817D8AE59 /* UIKit.framework */; };
 		D7FE5482348C4D7A48AC9D98 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = E7A1675EE30D85133DA6F037 /* LaunchScreen.storyboard */; };
-		D85AEC8F3A553813F4C8FFE9 /* libapp.a in Resources */ = {isa = PBXBuildFile; fileRef = 70886255C833765A56801799 /* libapp.a */; };
+		EEB2CA79E0F743EA9103D089 /* libapp.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E3861C84F58C2AA10D37E0DF /* libapp.xcframework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,18 +27,20 @@
 		2B77A5AB8843BB3A7AA482B7 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		2D7A44AAA44129385533FF45 /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
 		2DD15B1B58E49F6723C8535D /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		2FF8310A040C030CB61FFC88 /* commands.rs */ = {isa = PBXFileReference; path = commands.rs; sourceTree = "<group>"; };
 		3311089F10CF62A283DE429D /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
 		33A0DC3D015811C235B767F8 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		3E7020756E4491E3913C19DD /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };
 		4D67938AF5E1238F6D51DE25 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
 		63A9290A3DD6570E48359BA9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		70886255C833765A56801799 /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
 		81CE01A511C219060A14E786 /* circuit-assistant-mobile-companion_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "circuit-assistant-mobile-companion_iOS.entitlements"; sourceTree = "<group>"; };
 		88837FD9E01689D817D8AE59 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		93548A00C61156C271E97CAF /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
+		A81335AFF792AF12E0AE29A4 /* exports.rs */ = {isa = PBXFileReference; path = exports.rs; sourceTree = "<group>"; };
 		CD1CB63B4B5A270180642863 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		DAEE28423BD399DEC13B88F9 /* lib.rs */ = {isa = PBXFileReference; path = lib.rs; sourceTree = "<group>"; };
 		E2FFC7C8CBB366CA0E2DEF7B /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		E3861C84F58C2AA10D37E0DF /* libapp.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = libapp.xcframework; path = Externals/libapp.xcframework; sourceTree = "<group>"; };
 		E7A1675EE30D85133DA6F037 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		E9A0C7D3D350E6AA86533A3E /* db.rs */ = {isa = PBXFileReference; path = db.rs; sourceTree = "<group>"; };
 		EFD23BCA26B9A2A49417153D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -51,6 +53,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				447C910DB315B6AD47D906A5 /* libapp.a in Frameworks */,
+				EEB2CA79E0F743EA9103D089 /* libapp.xcframework in Frameworks */,
 				800C8362A63E12E4077665C7 /* CoreGraphics.framework in Frameworks */,
 				560DBDBAFF3794E149734B8A /* Metal.framework in Frameworks */,
 				6B23E299FD3F41B54D2F1DE1 /* MetalKit.framework in Frameworks */,
@@ -64,18 +67,12 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		11C8F8DB0396AA307F45061C /* debug */ = {
-			isa = PBXGroup;
-			children = (
-				70886255C833765A56801799 /* libapp.a */,
-			);
-			path = debug;
-			sourceTree = "<group>";
-		};
 		2352E5EFC77FD51CBBC6CE82 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				2FF8310A040C030CB61FFC88 /* commands.rs */,
 				E9A0C7D3D350E6AA86533A3E /* db.rs */,
+				A81335AFF792AF12E0AE29A4 /* exports.rs */,
 				DAEE28423BD399DEC13B88F9 /* lib.rs */,
 				3311089F10CF62A283DE429D /* main.rs */,
 			);
@@ -88,6 +85,7 @@
 			children = (
 				E2FFC7C8CBB366CA0E2DEF7B /* CoreGraphics.framework */,
 				2D7A44AAA44129385533FF45 /* libapp.a */,
+				E3861C84F58C2AA10D37E0DF /* libapp.xcframework */,
 				CD1CB63B4B5A270180642863 /* Metal.framework */,
 				FF48D65FDA6B35047FFDC21E /* MetalKit.framework */,
 				33A0DC3D015811C235B767F8 /* QuartzCore.framework */,
@@ -114,7 +112,6 @@
 				63A9290A3DD6570E48359BA9 /* Assets.xcassets */,
 				E7A1675EE30D85133DA6F037 /* LaunchScreen.storyboard */,
 				F5AB996CF04E12563C4FFE02 /* circuit-assistant-mobile-companion_iOS */,
-				E27138605E9DE2084A24DE07 /* Externals */,
 				BBD61B7F69553BB8485E466B /* Sources */,
 				2352E5EFC77FD51CBBC6CE82 /* src */,
 				393CE96224E78626AEDBD581 /* Frameworks */,
@@ -146,22 +143,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		E154948717FC228414222586 /* arm64 */ = {
-			isa = PBXGroup;
-			children = (
-				11C8F8DB0396AA307F45061C /* debug */,
-			);
-			path = arm64;
-			sourceTree = "<group>";
-		};
-		E27138605E9DE2084A24DE07 /* Externals */ = {
-			isa = PBXGroup;
-			children = (
-				E154948717FC228414222586 /* arm64 */,
-			);
-			path = Externals;
-			sourceTree = "<group>";
-		};
 		F5AB996CF04E12563C4FFE02 /* circuit-assistant-mobile-companion_iOS */ = {
 			isa = PBXGroup;
 			children = (
@@ -169,13 +150,6 @@
 				EFD23BCA26B9A2A49417153D /* Info.plist */,
 			);
 			path = "circuit-assistant-mobile-companion_iOS";
-			sourceTree = "<group>";
-		};
-		"TEMP_91DD7F7C-62D2-4CE1-806C-E2E115F8E49E" /* x86_64 */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = x86_64;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -237,7 +211,6 @@
 				B25A290C5F74D54F85F1D940 /* Assets.xcassets in Resources */,
 				D7FE5482348C4D7A48AC9D98 /* LaunchScreen.storyboard in Resources */,
 				4CDC9DA43652FBB3A9B4F9ED /* assets in Resources */,
-				D85AEC8F3A553813F4C8FFE9 /* libapp.a in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -263,7 +236,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "npm run -- tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration ${CONFIGURATION:?} 0 ${ARCHS:?}";
+			shellScript = "# If a prebuilt libapp.a exists for the current arch/configuration, skip the tauri xcode-script\n# This makes local simulator builds use the prebuilt static library instead of invoking the CLI helper\nCONFIG_LOWER=$(echo \"${CONFIGURATION:-}\" | tr '[:upper:]' '[:lower:]')\nCONFIG_UPPER=$(echo \"${CONFIGURATION:-}\" | tr '[:lower:]' '[:upper:]')\n\nCANDIDATES=\"$SRCROOT/Externals/libapp.xcframework $SRCROOT/Externals/arm64/${CONFIGURATION}/libapp.a $SRCROOT/Externals/arm64/${CONFIG_LOWER}/libapp.a $SRCROOT/Externals/arm64/${CONFIG_UPPER}/libapp.a $SRCROOT/Externals/x86_64/${CONFIGURATION}/libapp.a $SRCROOT/Externals/x86_64/${CONFIG_LOWER}/libapp.a $SRCROOT/Externals/x86_64/${CONFIG_UPPER}/libapp.a\"\n\nfor p in $CANDIDATES; do\n  if [ -f \"$p\" ]; then\n    echo \"Found prebuilt libapp.a at $p — skipping tauri ios xcode-script\"\n    exit 0\n  fi\ndone\n\n# No prebuilt library found; fall back to invoking the tauri helper as before\nnpm run -- tauri ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -292,8 +265,9 @@
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
+					"$(inherited) $(PROJECT_DIR)/Externals",
 					"\".\"",
+					"\"Externals\"",
 				);
 				INFOPLIST_FILE = "circuit-assistant-mobile-companion_iOS/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -442,8 +416,9 @@
 				ENABLE_BITCODE = NO;
 				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
 				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
+					"$(inherited) $(PROJECT_DIR)/Externals",
 					"\".\"",
+					"\"Externals\"",
 				);
 				INFOPLIST_FILE = "circuit-assistant-mobile-companion_iOS/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (

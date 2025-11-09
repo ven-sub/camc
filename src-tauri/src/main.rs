@@ -23,7 +23,10 @@ fn main() {
             exports::export_ics,
             exports::export_vcard,
             exports::get_ics_content,
-            exports::get_vcard_content
+            exports::get_vcard_content,
+            exports::list_json_files,
+            exports::read_json_file,
+            exports::create_sample_events
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
