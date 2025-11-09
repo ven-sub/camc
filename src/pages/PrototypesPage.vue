@@ -58,12 +58,10 @@
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { invoke } from '@tauri-apps/api/core'
-import { save } from '@tauri-apps/plugin-dialog'
-import { writeTextFile } from '@tauri-apps/plugin-fs'
 
 const $q = useQuasar()
 
-// Platform detection
+// Platform detection for user feedback messages
 const isMobile = ref(false)
 
 onMounted(async () => {
@@ -84,39 +82,20 @@ const exportICS = async () => {
   icsFilePath.value = ''
   
   try {
-    if (isMobile.value) {
-      // On mobile: Get content and use save dialog (user chooses location)
-      const content = await invoke<string>('get_ics_content')
-      const filePath = await save({
-        defaultPath: 'CircuitOverseerVisit.ics',
-        filters: [{
-          name: 'iCalendar',
-          extensions: ['ics']
-        }],
-        title: 'Save Calendar Event'
-      })
-      
-      if (filePath) {
-        await writeTextFile(filePath, content)
-        icsFilePath.value = filePath
-        $q.notify({
-          type: 'positive',
-          message: 'ICS calendar file exported successfully!',
-          caption: 'Circuit Overseer Visit event created',
-          position: 'top'
-        })
-      }
-    } else {
-      // On desktop: Direct file write to app directory
-      const filePath = await invoke<string>('export_ics')
-      icsFilePath.value = filePath
-      $q.notify({
-        type: 'positive',
-        message: 'ICS calendar file exported successfully!',
-        caption: 'Circuit Overseer Visit event created',
-        position: 'top'
-      })
-    }
+    // On all platforms: Use direct export to appropriate directory
+    // iOS/Android: Writes to app's Documents directory (accessible via Files app)
+    // Desktop: Writes to app data directory
+    const filePath = await invoke<string>('export_ics')
+    icsFilePath.value = filePath
+    
+    $q.notify({
+      type: 'positive',
+      message: 'ICS calendar file exported successfully!',
+      caption: isMobile.value 
+        ? 'Saved to Files app → Circuit Assistant' 
+        : 'Circuit Overseer Visit event created',
+      position: 'top'
+    })
   } catch (error) {
     console.error('ICS export failed:', error)
     $q.notify({
@@ -139,39 +118,20 @@ const exportVCard = async () => {
   vcardFilePath.value = ''
   
   try {
-    if (isMobile.value) {
-      // On mobile: Get content and use save dialog (user chooses location)
-      const content = await invoke<string>('get_vcard_content')
-      const filePath = await save({
-        defaultPath: 'JohnSmith.vcf',
-        filters: [{
-          name: 'vCard',
-          extensions: ['vcf']
-        }],
-        title: 'Save Contact'
-      })
-      
-      if (filePath) {
-        await writeTextFile(filePath, content)
-        vcardFilePath.value = filePath
-        $q.notify({
-          type: 'positive',
-          message: 'vCard file exported successfully!',
-          caption: 'Contact: John Smith',
-          position: 'top'
-        })
-      }
-    } else {
-      // On desktop: Direct file write to app directory
-      const filePath = await invoke<string>('export_vcard')
-      vcardFilePath.value = filePath
-      $q.notify({
-        type: 'positive',
-        message: 'vCard file exported successfully!',
-        caption: 'Contact: John Smith',
-        position: 'top'
-      })
-    }
+    // On all platforms: Use direct export to appropriate directory
+    // iOS/Android: Writes to app's Documents directory (accessible via Files app)
+    // Desktop: Writes to app data directory
+    const filePath = await invoke<string>('export_vcard')
+    vcardFilePath.value = filePath
+    
+    $q.notify({
+      type: 'positive',
+      message: 'vCard file exported successfully!',
+      caption: isMobile.value 
+        ? 'Saved to Files app → Circuit Assistant' 
+        : 'Contact: John Smith',
+      position: 'top'
+    })
   } catch (error) {
     console.error('vCard export failed:', error)
     $q.notify({

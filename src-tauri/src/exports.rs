@@ -38,12 +38,20 @@ END:VCARD\r\n".to_string()
 }
 
 /// Get the appropriate export directory based on platform
+/// On iOS/Android: Returns app's Documents directory (accessible via Files app)
+/// On Desktop: Returns app's data directory
 fn get_export_directory() -> Result<PathBuf, String> {
-    // On iOS/Android, use document directory (user accessible)
+    // On iOS/Android, use app's document directory
+    // This is accessible via Files app -> "On My iPhone/iPad" -> App Name
     #[cfg(any(target_os = "ios", target_os = "android"))]
     {
+        // Get the app's documents directory (not the system Documents)
         let doc_dir = dirs::document_dir()
             .ok_or("Failed to get document directory")?;
+        
+        // Ensure directory exists
+        fs::create_dir_all(&doc_dir).map_err(|e| e.to_string())?;
+        
         Ok(doc_dir)
     }
     
