@@ -13,24 +13,7 @@
         <q-toolbar-title>
           Circuit Assistant Mobile Companion
         </q-toolbar-title>
-        <q-space />
-        <q-btn
-          flat
-          round
-          dense
-          icon="storage"
-          @click="testDatabaseConnection"
-          class="q-mr-sm"
-        >
-          <q-tooltip>Test Database Connection</q-tooltip>
-        </q-btn>
-        <q-btn
-          flat
-          round
-          dense
-          icon="dark_mode"
-          @click="toggleDarkMode"
-        />
+        <ToolbarActions />
       </q-toolbar>
     </q-header>
 
@@ -40,29 +23,12 @@
         <q-toolbar-title>
           Circuit Assistant
         </q-toolbar-title>
-        <q-space />
-        <q-btn
-          flat
-          round
-          dense
-          icon="storage"
-          @click="testDatabaseConnection"
-          class="q-mr-sm"
-        >
-          <q-tooltip>Test Database Connection</q-tooltip>
-        </q-btn>
-        <q-btn
-          flat
-          round
-          dense
-          icon="dark_mode"
-          @click="toggleDarkMode"
-        />
+        <ToolbarActions />
       </q-toolbar>
     </q-header>
 
     <!-- Navigation Drawer -->
-    <NavigationDrawer />
+    <NavigationDrawer v-model="leftDrawerOpen" />
 
     <q-page-container>
       <router-view />
@@ -72,32 +38,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Dark, useQuasar } from 'quasar'
-import { invoke } from '@tauri-apps/api/core'
 import NavigationDrawer from './components/NavigationDrawer.vue'
+import ToolbarActions from './components/ToolbarActions.vue'
 
-const $q = useQuasar()
 const leftDrawerOpen = ref(true)
-
-const toggleDarkMode = () => {
-  Dark.toggle()
-}
-
-const testDatabaseConnection = async () => {
-  try {
-    const result = await invoke<string>('test_db_connection')
-    $q.notify({
-      type: 'positive',
-      message: result,
-      position: 'top'
-    })
-  } catch (error) {
-    console.error('Database connection test failed:', error)
-    $q.notify({
-      type: 'negative',
-      message: 'Database connection failed',
-      position: 'top'
-    })
-  }
-}
 </script>

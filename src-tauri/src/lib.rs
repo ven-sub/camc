@@ -5,7 +5,31 @@ mod commands;
 mod db;
 mod exports;
 
-use std::sync::Mutex;
+use rusqlite::Connection;
+
+/// Creates the Tauri application builder with all plugins and commands registered
+/// This is shared between desktop (main.rs) and mobile (lib.rs) entry points
+fn create_tauri_app(conn: Connection) -> tauri::Builder<tauri::Wry> {
+    use std::sync::Mutex;
+    
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .manage(Mutex::new(conn))
+        .invoke_handler(tauri::generate_handler![
+            commands::greet,
+            commands::get_platform,
+            commands::test_db_connection,
+            exports::export_ics,
+            exports::export_vcard,
+            exports::get_ics_content,
+            exports::get_vcard_content,
+            exports::list_json_files,
+            exports::read_json_file,
+            exports::create_sample_events,
+            exports::ensure_documents_placeholder
+        ])
+}
 
 // Mobile entry point (for iOS/Android builds only)
 #[cfg(mobile)]
@@ -25,25 +49,7 @@ fn main() {
         }
     }
 
-    tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
-        .manage(Mutex::new(conn))
-        .invoke_handler(tauri::generate_handler![
-            commands::greet,
-            commands::get_platform,
-            commands::test_db_connection,
-            exports::export_ics,
-            exports::export_vcard,
-            exports::get_ics_content,
-            exports::get_vcard_content,
-            // Also expose file-related commands on mobile (import/export/list)
-            exports::list_json_files,
-            exports::read_json_file,
-            exports::create_sample_events,
-            // Ensure placeholder so Files app shows the folder on device installs
-            exports::ensure_documents_placeholder
-        ])
+    create_tauri_app(conn)
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

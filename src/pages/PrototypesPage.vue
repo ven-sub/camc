@@ -17,11 +17,11 @@
               icon="event"
               label="Export ICS Calendar"
               @click="exportICS"
-              :loading="icsLoading"
+              :loading="icsExport.loading.value"
             />
-            <div v-if="icsFilePath" class="text-caption">
+            <div v-if="icsExport.filePath.value" class="text-caption">
               <q-icon name="check_circle" color="positive" class="q-mr-xs" />
-              <strong>Saved to:</strong> {{ icsFilePath }}
+              <strong>Saved to:</strong> {{ icsExport.filePath.value }}
             </div>
           </div>
 
@@ -32,11 +32,11 @@
               icon="contact_page"
               label="Export vCard"
               @click="exportVCard"
-              :loading="vcardLoading"
+              :loading="vcardExport.loading.value"
             />
-            <div v-if="vcardFilePath" class="text-caption">
+            <div v-if="vcardExport.filePath.value" class="text-caption">
               <q-icon name="check_circle" color="positive" class="q-mr-xs" />
-              <strong>Saved to:</strong> {{ vcardFilePath }}
+              <strong>Saved to:</strong> {{ vcardExport.filePath.value }}
             </div>
           </div>
 
@@ -47,11 +47,11 @@
               icon="event_note"
               label="Create Sample Events"
               @click="createSampleEvents"
-              :loading="eventsLoading"
+              :loading="eventsExport.loading.value"
             />
-            <div v-if="eventsFilePath" class="text-caption">
+            <div v-if="eventsExport.filePath.value" class="text-caption">
               <q-icon name="check_circle" color="positive" class="q-mr-xs" />
-              <strong>Saved to:</strong> {{ eventsFilePath }}
+              <strong>Saved to:</strong> {{ eventsExport.filePath.value }}
             </div>
           </div>
         </div>
@@ -71,10 +71,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useQuasar } from 'quasar'
 import { invoke } from '@tauri-apps/api/core'
-
-const $q = useQuasar()
+import { useFileExport } from '../composables/useFileExport'
 
 // Platform detection for user feedback messages
 const isMobile = ref(false)
@@ -89,109 +87,33 @@ onMounted(async () => {
 })
 
 // ICS Export
-const icsLoading = ref(false)
-const icsFilePath = ref('')
+const icsExport = useFileExport({
+  commandName: 'export_ics',
+  successMessage: 'ICS calendar file exported successfully!',
+  mobileCaption: 'Saved to Files app → Circuit Assistant',
+  desktopCaption: 'Circuit Overseer Visit event created'
+})
 
-const exportICS = async () => {
-  icsLoading.value = true
-  icsFilePath.value = ''
-  
-  try {
-    // On all platforms: Use direct export to appropriate directory
-    // iOS/Android: Writes to app's Documents directory (accessible via Files app)
-    // Desktop: Writes to app data directory
-    const filePath = await invoke<string>('export_ics')
-    icsFilePath.value = filePath
-    
-    $q.notify({
-      type: 'positive',
-      message: 'ICS calendar file exported successfully!',
-      caption: isMobile.value 
-        ? 'Saved to Files app → Circuit Assistant' 
-        : 'Circuit Overseer Visit event created',
-      position: 'top'
-    })
-  } catch (error) {
-    console.error('ICS export failed:', error)
-    $q.notify({
-      type: 'negative',
-      message: 'Failed to export ICS file',
-      caption: error instanceof Error ? error.message : 'Unknown error',
-      position: 'top'
-    })
-  } finally {
-    icsLoading.value = false
-  }
-}
+const exportICS = () => icsExport.execute(isMobile.value)
 
 // vCard Export
-const vcardLoading = ref(false)
-const vcardFilePath = ref('')
+const vcardExport = useFileExport({
+  commandName: 'export_vcard',
+  successMessage: 'vCard file exported successfully!',
+  mobileCaption: 'Saved to Files app → Circuit Assistant',
+  desktopCaption: 'Contact: John Smith'
+})
 
-const exportVCard = async () => {
-  vcardLoading.value = true
-  vcardFilePath.value = ''
-  
-  try {
-    // On all platforms: Use direct export to appropriate directory
-    // iOS/Android: Writes to app's Documents directory (accessible via Files app)
-    // Desktop: Writes to app data directory
-    const filePath = await invoke<string>('export_vcard')
-    vcardFilePath.value = filePath
-    
-    $q.notify({
-      type: 'positive',
-      message: 'vCard file exported successfully!',
-      caption: isMobile.value 
-        ? 'Saved to Files app → Circuit Assistant' 
-        : 'Contact: John Smith',
-      position: 'top'
-    })
-  } catch (error) {
-    console.error('vCard export failed:', error)
-    $q.notify({
-      type: 'negative',
-      message: 'Failed to export vCard file',
-      caption: error instanceof Error ? error.message : 'Unknown error',
-      position: 'top'
-    })
-  } finally {
-    vcardLoading.value = false
-  }
-}
+const exportVCard = () => vcardExport.execute(isMobile.value)
 
 // Sample Events Export
-const eventsLoading = ref(false)
-const eventsFilePath = ref('')
+const eventsExport = useFileExport({
+  commandName: 'create_sample_events',
+  successMessage: 'Sample events file created successfully!',
+  mobileCaption: 'Saved to Files app → Circuit Assistant → events-sample.json',
+  desktopCaption: '5 sample events created'
+})
 
-const createSampleEvents = async () => {
-  eventsLoading.value = true
-  eventsFilePath.value = ''
-  
-  try {
-    // Create sample events JSON file in the Documents directory
-    const filePath = await invoke<string>('create_sample_events')
-    eventsFilePath.value = filePath
-    
-    $q.notify({
-      type: 'positive',
-      message: 'Sample events file created successfully!',
-      caption: isMobile.value 
-        ? 'Saved to Files app → Circuit Assistant → events-sample.json' 
-        : '5 sample events created',
-      position: 'top'
-    })
-  } catch (error) {
-    console.error('Sample events creation failed:', error)
-    $q.notify({
-      type: 'negative',
-      message: 'Failed to create sample events file',
-      caption: error instanceof Error ? error.message : 'Unknown error',
-      position: 'top'
-    })
-  } finally {
-    eventsLoading.value = false
-  }
-}
+const createSampleEvents = () => eventsExport.execute(isMobile.value)
 </script>
 

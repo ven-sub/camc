@@ -151,6 +151,8 @@ import { useQuasar } from 'quasar'
 import { QCalendarMonth } from '@quasar/quasar-ui-qcalendar'
 import '@quasar/quasar-ui-qcalendar/dist/index.css'
 import { invoke } from '@tauri-apps/api/core'
+import { CalendarEvent, parseEventsData } from '../utils/events'
+import { getErrorMessage } from '../utils/errors'
 
 const $q = useQuasar()
 
@@ -158,15 +160,6 @@ const $q = useQuasar()
 const selectedDate = ref(new Date().toISOString().slice(0, 10))
 
 // Events data
-interface CalendarEvent {
-  title: string
-  date: string // ISO date string (YYYY-MM-DD)
-  time?: string
-  location?: string
-  description?: string
-  color?: string
-}
-
 const events = ref<CalendarEvent[]>([])
 
 // Event dialog
@@ -198,7 +191,7 @@ const loadAvailableFiles = async () => {
     $q.notify({
       type: 'negative',
       message: 'Failed to load available files',
-      caption: error instanceof Error ? error.message : 'Unknown error',
+      caption: getErrorMessage(error),
       position: 'top'
     })
   }
@@ -220,54 +213,21 @@ const loadEventsFromFile = async (filePath: string) => {
     // Read the JSON file using the Rust command
     const contents = await invoke<string>('read_json_file', { filePath })
     
-    // Parse JSON
+    // Parse and validate events data
     const jsonData = JSON.parse(contents)
+    events.value = parseEventsData(jsonData)
     
-    // Validate and load events
-    if (Array.isArray(jsonData)) {
-      events.value = jsonData.filter(event => 
-        event.title && event.date
-      ).map(event => ({
-        title: event.title,
-        date: event.date,
-        time: event.time,
-        location: event.location,
-        description: event.description,
-        color: event.color || 'primary'
-      }))
-      
-      $q.notify({
-        type: 'positive',
-        message: `Successfully loaded ${events.value.length} events`,
-        position: 'top'
-      })
-    } else if (jsonData.events && Array.isArray(jsonData.events)) {
-      // Handle case where events are nested in an object
-      events.value = jsonData.events.filter(event => 
-        event.title && event.date
-      ).map(event => ({
-        title: event.title,
-        date: event.date,
-        time: event.time,
-        location: event.location,
-        description: event.description,
-        color: event.color || 'primary'
-      }))
-      
-      $q.notify({
-        type: 'positive',
-        message: `Successfully loaded ${events.value.length} events`,
-        position: 'top'
-      })
-    } else {
-      throw new Error('Invalid JSON format. Expected an array of events.')
-    }
+    $q.notify({
+      type: 'positive',
+      message: `Successfully loaded ${events.value.length} events`,
+      position: 'top'
+    })
   } catch (error) {
     console.error('Error loading events:', error)
     $q.notify({
       type: 'negative',
       message: 'Failed to load events',
-      caption: error instanceof Error ? error.message : 'Unknown error',
+      caption: getErrorMessage(error),
       position: 'top'
     })
   }

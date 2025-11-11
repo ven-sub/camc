@@ -1,6 +1,20 @@
 use std::fs;
+use std::io;
 use std::path::PathBuf;
 use serde::Serialize;
+
+/// Helper to convert IO errors to String for Tauri command results
+fn map_io_error(err: io::Error) -> String {
+    err.to_string()
+}
+
+/// Helper to write content to a file in the export directory
+fn write_file_to_export_dir(filename: &str, content: &str) -> Result<String, String> {
+    let export_dir = get_export_directory()?;
+    let file_path = export_dir.join(filename);
+    fs::write(&file_path, content).map_err(map_io_error)?;
+    Ok(file_path.to_string_lossy().to_string())
+}
 
 /// Creates sample ICS calendar content
 fn create_sample_ics_content() -> String {
@@ -49,7 +63,7 @@ fn get_export_directory() -> Result<PathBuf, String> {
             .ok_or("Failed to get document directory")?;
 
         // Ensure directory exists
-        fs::create_dir_all(&doc_dir).map_err(|e| e.to_string())?;
+        fs::create_dir_all(&doc_dir).map_err(map_io_error)?;
 
         Ok(doc_dir)
     }
@@ -62,7 +76,7 @@ fn get_export_directory() -> Result<PathBuf, String> {
             .join("org.circuitassistant.camc");
         
         // Create directory if it doesn't exist
-        fs::create_dir_all(&app_dir).map_err(|e| e.to_string())?;
+        fs::create_dir_all(&app_dir).map_err(map_io_error)?;
         
         Ok(app_dir)
     }
@@ -70,38 +84,14 @@ fn get_export_directory() -> Result<PathBuf, String> {
 
 #[tauri::command]
 pub fn export_ics() -> Result<String, String> {
-    // Get ICS content
-    let ics_content = create_sample_ics_content();
-    
-    // Get the appropriate export directory
-    let export_dir = get_export_directory()?;
-    
-    // Create ICS file path
-    let file_path = export_dir.join("CircuitOverseerVisit.ics");
-    
-    // Write to file
-    fs::write(&file_path, ics_content).map_err(|e| e.to_string())?;
-    
-    // Return the file path as a string
-    Ok(file_path.to_string_lossy().to_string())
+    let content = create_sample_ics_content();
+    write_file_to_export_dir("CircuitOverseerVisit.ics", &content)
 }
 
 #[tauri::command]
 pub fn export_vcard() -> Result<String, String> {
-    // Get vCard content
-    let vcard_content = create_sample_vcard_content();
-    
-    // Get the appropriate export directory
-    let export_dir = get_export_directory()?;
-    
-    // Create vCard file path
-    let file_path = export_dir.join("JohnSmith.vcf");
-    
-    // Write to file
-    fs::write(&file_path, vcard_content).map_err(|e| e.to_string())?;
-    
-    // Return the file path as a string
-    Ok(file_path.to_string_lossy().to_string())
+    let content = create_sample_vcard_content();
+    write_file_to_export_dir("JohnSmith.vcf", &content)
 }
 
 /// Get ICS content - exposed for frontend to handle save on mobile
@@ -132,17 +122,17 @@ pub fn list_json_files() -> Result<Vec<FileInfo>, String> {
     let mut json_files = Vec::new();
     
     // Read directory entries
-    let entries = fs::read_dir(&export_dir).map_err(|e| e.to_string())?;
+    let entries = fs::read_dir(&export_dir).map_err(map_io_error)?;
     
     for entry in entries {
-        let entry = entry.map_err(|e| e.to_string())?;
+        let entry = entry.map_err(map_io_error)?;
         let path = entry.path();
         
         // Check if it's a file and has .json extension
         if path.is_file() {
             if let Some(extension) = path.extension() {
                 if extension == "json" {
-                    let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
+                    let metadata = fs::metadata(&path).map_err(map_io_error)?;
                     let name = path.file_name()
                         .and_then(|n| n.to_str())
                         .ok_or("Invalid filename")?
@@ -167,9 +157,7 @@ pub fn list_json_files() -> Result<Vec<FileInfo>, String> {
 /// Read a JSON file from the app's Documents directory
 #[tauri::command]
 pub fn read_json_file(file_path: String) -> Result<String, String> {
-    // Read the file
-    let contents = fs::read_to_string(&file_path).map_err(|e| e.to_string())?;
-    Ok(contents)
+    fs::read_to_string(&file_path).map_err(map_io_error)
 }
 
 /// Create a sample events JSON file in the Documents directory for testing
@@ -218,17 +206,7 @@ pub fn create_sample_events() -> Result<String, String> {
   }
 ]"#;
 
-    // Get the export directory
-    let export_dir = get_export_directory()?;
-    
-    // Create sample events file path
-    let file_path = export_dir.join("events-sample.json");
-    
-    // Write to file
-    fs::write(&file_path, sample_events).map_err(|e| e.to_string())?;
-    
-    // Return the file path as a string
-    Ok(file_path.to_string_lossy().to_string())
+    write_file_to_export_dir("events-sample.json", sample_events)
 }
 
 /// Ensure that a small placeholder file exists in the Documents directory so that
@@ -240,7 +218,7 @@ pub fn ensure_documents_placeholder() -> Result<String, String> {
 
     if !placeholder.exists() {
         let content = "Circuit Assistant app files go in this folder.\n";
-        fs::write(&placeholder, content).map_err(|e| e.to_string())?;
+        fs::write(&placeholder, content).map_err(map_io_error)?;
     }
 
     Ok(placeholder.to_string_lossy().to_string())

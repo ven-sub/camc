@@ -6,8 +6,8 @@
       :width="280"
       :breakpoint="1024"
       bordered
-      class="bg-grey-1"
       v-if="$q.screen.gt.sm"
+      :class="$q.dark.isActive ? 'bg-dark' : 'bg-grey-1'"
     >
       <q-scroll-area class="fit">
         <div class="q-pa-md">
@@ -42,12 +42,12 @@
     <!-- Mobile/Tablet: Bottom Tab Navigation -->
     <q-footer
       v-if="$q.screen.lt.md"
-      class="bg-white text-primary"
       bordered
+      :class="$q.dark.isActive ? 'bg-dark' : 'bg-white'"
     >
       <q-tabs
         v-model="activeTab"
-        class="text-grey-7"
+        :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'"
         active-color="primary"
         indicator-color="primary"
         align="justify"
@@ -67,13 +67,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useQuasar } from 'quasar'
 
+const $q = useQuasar()
 const router = useRouter()
 const route = useRoute()
 
-const leftDrawerOpen = ref(true)
+// Accept drawer state from parent
+const leftDrawerOpen = defineModel<boolean>({ default: true })
 
 const menuItems = [
   {
