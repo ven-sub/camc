@@ -1,12 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
-// Use Tauri path helpers on mobile to reliably resolve the app Documents directory
-#[cfg(any(target_os = "ios", target_os = "android"))]
-use tauri::api::path::document_dir as tauri_document_dir;
 use serde::Serialize;
-
-#[cfg(any(target_os = "ios", target_os = "android"))]
-use tauri::Manager;
 
 /// Creates sample ICS calendar content
 fn create_sample_ics_content() -> String {
@@ -49,9 +43,9 @@ fn get_export_directory() -> Result<PathBuf, String> {
     // This is accessible via Files app -> "On My iPhone/iPad" -> App Name
     #[cfg(any(target_os = "ios", target_os = "android"))]
     {
-        // Prefer Tauri's path helper on mobile to reliably find the app sandbox Documents
-        let doc_dir = tauri_document_dir()
-            .or_else(|| dirs::document_dir())
+        // Use dirs crate to find the app sandbox Documents directory
+        // On iOS/Android, this correctly resolves to the app's sandboxed Documents folder
+        let doc_dir = dirs::document_dir()
             .ok_or("Failed to get document directory")?;
 
         // Ensure directory exists
