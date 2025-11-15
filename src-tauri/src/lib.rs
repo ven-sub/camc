@@ -5,17 +5,34 @@ mod commands;
 mod db;
 mod exports;
 
-use rusqlite::Connection;
+use std::sync::Mutex;
+use tauri::Manager;
 
-/// Creates the Tauri application builder with all plugins and commands registered
-/// This is shared between desktop (main.rs) and mobile (lib.rs) entry points
-fn create_tauri_app(conn: Connection) -> tauri::Builder<tauri::Wry> {
-    use std::sync::Mutex;
-    
+// Mobile entry point (for iOS/Android builds only)
+#[cfg(mobile)]
+#[tauri::mobile_entry_point]
+fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .manage(Mutex::new(conn))
+        .setup(|app| {
+            // Initialize database with AppHandle
+            let conn = db::init_db(&app.handle())
+                .expect("Failed to initialize database");
+            app.manage(Mutex::new(conn));
+
+            // Ensure a small placeholder exists in Documents so the Files app will show the app folder
+            match exports::ensure_documents_placeholder(app.handle().clone()) {
+                Ok(path) => {
+                    println!("Created or verified placeholder file at: {}", path);
+                }
+                Err(err) => {
+                    eprintln!("Could not ensure placeholder file in Documents: {}", err);
+                }
+            }
+
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::get_platform,
@@ -24,32 +41,13 @@ fn create_tauri_app(conn: Connection) -> tauri::Builder<tauri::Wry> {
             exports::export_vcard,
             exports::get_ics_content,
             exports::get_vcard_content,
+            // Also expose file-related commands on mobile (import/export/list)
             exports::list_json_files,
             exports::read_json_file,
             exports::create_sample_events,
+            // Ensure placeholder so Files app shows the folder on device installs
             exports::ensure_documents_placeholder
         ])
-}
-
-// Mobile entry point (for iOS/Android builds only)
-#[cfg(mobile)]
-#[tauri::mobile_entry_point]
-fn main() {
-    // Initialize database
-    let conn = db::init_db().expect("Failed to initialize database");
-
-    // Ensure a small placeholder exists in Documents so the Files app will show the app folder
-    match exports::ensure_documents_placeholder() {
-        Ok(path) => {
-            // Best-effort informational print; on mobile this will appear in device logs
-            println!("Created or verified placeholder file at: {}", path);
-        }
-        Err(err) => {
-            eprintln!("Could not ensure placeholder file in Documents: {}", err);
-        }
-    }
-
-    create_tauri_app(conn)
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -1,20 +1,7 @@
 use std::fs;
-use std::io;
 use std::path::PathBuf;
 use serde::Serialize;
-
-/// Helper to convert IO errors to String for Tauri command results
-fn map_io_error(err: io::Error) -> String {
-    err.to_string()
-}
-
-/// Helper to write content to a file in the export directory
-fn write_file_to_export_dir(filename: &str, content: &str) -> Result<String, String> {
-    let export_dir = get_export_directory()?;
-    let file_path = export_dir.join(filename);
-    fs::write(&file_path, content).map_err(map_io_error)?;
-    Ok(file_path.to_string_lossy().to_string())
-}
+use tauri::{AppHandle, Manager};
 
 /// Creates sample ICS calendar content
 fn create_sample_ics_content() -> String {
@@ -52,18 +39,18 @@ END:VCARD\r\n".to_string()
 /// Get the appropriate export directory based on platform
 /// On iOS/Android: Returns app's Documents directory (accessible via Files app)
 /// On Desktop: Returns app's data directory
-fn get_export_directory() -> Result<PathBuf, String> {
+fn get_export_directory(app: &AppHandle) -> Result<PathBuf, String> {
     // On iOS/Android, use app's document directory
     // This is accessible via Files app -> "On My iPhone/iPad" -> App Name
     #[cfg(any(target_os = "ios", target_os = "android"))]
     {
-        // Use dirs crate to find the app sandbox Documents directory
-        // On iOS/Android, this correctly resolves to the app's sandboxed Documents folder
-        let doc_dir = dirs::document_dir()
-            .ok_or("Failed to get document directory")?;
+        let doc_dir = app
+            .path()
+            .document_dir()
+            .map_err(|e| format!("Failed to get document directory: {}", e))?;
 
         // Ensure directory exists
-        fs::create_dir_all(&doc_dir).map_err(map_io_error)?;
+        fs::create_dir_all(&doc_dir).map_err(|e| e.to_string())?;
 
         Ok(doc_dir)
     }
@@ -71,27 +58,52 @@ fn get_export_directory() -> Result<PathBuf, String> {
     // On desktop, use app data directory
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     {
-        let app_dir = dirs::data_local_dir()
-            .ok_or("Failed to get app data directory")?
-            .join("org.circuitassistant.camc");
+        let app_dir = app
+            .path()
+            .app_data_dir()
+            .map_err(|e| format!("Failed to get app data directory: {}", e))?;
         
         // Create directory if it doesn't exist
-        fs::create_dir_all(&app_dir).map_err(map_io_error)?;
+        fs::create_dir_all(&app_dir).map_err(|e| e.to_string())?;
         
         Ok(app_dir)
     }
 }
 
 #[tauri::command]
-pub fn export_ics() -> Result<String, String> {
-    let content = create_sample_ics_content();
-    write_file_to_export_dir("CircuitOverseerVisit.ics", &content)
+pub fn export_ics(app: AppHandle) -> Result<String, String> {
+    // Get ICS content
+    let ics_content = create_sample_ics_content();
+    
+    // Get the appropriate export directory
+    let export_dir = get_export_directory(&app)?;
+    
+    // Create ICS file path
+    let file_path = export_dir.join("CircuitOverseerVisit.ics");
+    
+    // Write to file
+    fs::write(&file_path, ics_content).map_err(|e| e.to_string())?;
+    
+    // Return the file path as a string
+    Ok(file_path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
-pub fn export_vcard() -> Result<String, String> {
-    let content = create_sample_vcard_content();
-    write_file_to_export_dir("JohnSmith.vcf", &content)
+pub fn export_vcard(app: AppHandle) -> Result<String, String> {
+    // Get vCard content
+    let vcard_content = create_sample_vcard_content();
+    
+    // Get the appropriate export directory
+    let export_dir = get_export_directory(&app)?;
+    
+    // Create vCard file path
+    let file_path = export_dir.join("JohnSmith.vcf");
+    
+    // Write to file
+    fs::write(&file_path, vcard_content).map_err(|e| e.to_string())?;
+    
+    // Return the file path as a string
+    Ok(file_path.to_string_lossy().to_string())
 }
 
 /// Get ICS content - exposed for frontend to handle save on mobile
@@ -116,23 +128,23 @@ pub struct FileInfo {
 
 /// List all JSON files in the app's Documents directory
 #[tauri::command]
-pub fn list_json_files() -> Result<Vec<FileInfo>, String> {
-    let export_dir = get_export_directory()?;
+pub fn list_json_files(app: AppHandle) -> Result<Vec<FileInfo>, String> {
+    let export_dir = get_export_directory(&app)?;
     
     let mut json_files = Vec::new();
     
     // Read directory entries
-    let entries = fs::read_dir(&export_dir).map_err(map_io_error)?;
+    let entries = fs::read_dir(&export_dir).map_err(|e| e.to_string())?;
     
     for entry in entries {
-        let entry = entry.map_err(map_io_error)?;
+        let entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path();
         
         // Check if it's a file and has .json extension
         if path.is_file() {
             if let Some(extension) = path.extension() {
                 if extension == "json" {
-                    let metadata = fs::metadata(&path).map_err(map_io_error)?;
+                    let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
                     let name = path.file_name()
                         .and_then(|n| n.to_str())
                         .ok_or("Invalid filename")?
@@ -157,12 +169,14 @@ pub fn list_json_files() -> Result<Vec<FileInfo>, String> {
 /// Read a JSON file from the app's Documents directory
 #[tauri::command]
 pub fn read_json_file(file_path: String) -> Result<String, String> {
-    fs::read_to_string(&file_path).map_err(map_io_error)
+    // Read the file
+    let contents = fs::read_to_string(&file_path).map_err(|e| e.to_string())?;
+    Ok(contents)
 }
 
 /// Create a sample events JSON file in the Documents directory for testing
 #[tauri::command]
-pub fn create_sample_events() -> Result<String, String> {
+pub fn create_sample_events(app: AppHandle) -> Result<String, String> {
     let sample_events = r#"[
   {
     "title": "Circuit Overseer Visit",
@@ -206,19 +220,29 @@ pub fn create_sample_events() -> Result<String, String> {
   }
 ]"#;
 
-    write_file_to_export_dir("events-sample.json", sample_events)
+    // Get the export directory
+    let export_dir = get_export_directory(&app)?;
+    
+    // Create sample events file path
+    let file_path = export_dir.join("events-sample.json");
+    
+    // Write to file
+    fs::write(&file_path, sample_events).map_err(|e| e.to_string())?;
+    
+    // Return the file path as a string
+    Ok(file_path.to_string_lossy().to_string())
 }
 
 /// Ensure that a small placeholder file exists in the Documents directory so that
 /// the Files app will display the app folder on device installs (TestFlight/App Store).
 #[tauri::command]
-pub fn ensure_documents_placeholder() -> Result<String, String> {
-    let export_dir = get_export_directory()?;
+pub fn ensure_documents_placeholder(app: AppHandle) -> Result<String, String> {
+    let export_dir = get_export_directory(&app)?;
     let placeholder = export_dir.join("CircuitAssistant-README.txt");
 
     if !placeholder.exists() {
         let content = "Circuit Assistant app files go in this folder.\n";
-        fs::write(&placeholder, content).map_err(map_io_error)?;
+        fs::write(&placeholder, content).map_err(|e| e.to_string())?;
     }
 
     Ok(placeholder.to_string_lossy().to_string())

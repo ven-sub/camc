@@ -1,22 +1,49 @@
 #!/bin/bash
-# Local script to build iOS app and upload to TestFlight
-# This replicates the GitHub Actions workflow locally
+# Local script to build iOS app
+# Usage:
+#   ./build-local.sh simulator   - Build for iOS Simulator (no code signing)
+#   ./build-local.sh device      - Build IPA for device (no TestFlight upload)
+#   ./build-local.sh testflight  - Build IPA and upload to TestFlight
 
 set -e
-
-echo "=== Building iOS App Locally for TestFlight ==="
 
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Check for simulator mode
-if [ "${SIMULATOR:-0}" = "1" ]; then
-    echo "========================================"
-    echo "  Building for iOS Simulator (No Code Signing)"
-    echo "========================================"
+# Parse command line argument
+BUILD_MODE="${1:-testflight}"
+
+# Show usage if invalid mode
+if [[ "$BUILD_MODE" != "simulator" && "$BUILD_MODE" != "device" && "$BUILD_MODE" != "testflight" ]]; then
+    echo -e "${RED}Error: Invalid build mode '$BUILD_MODE'${NC}"
+    echo ""
+    echo "Usage: $0 [mode]"
+    echo ""
+    echo "Modes:"
+    echo -e "  ${BLUE}simulator${NC}   - Build for iOS Simulator (no code signing)"
+    echo -e "  ${BLUE}device${NC}      - Build IPA for device (local install, no TestFlight)"
+    echo -e "  ${BLUE}testflight${NC}  - Build IPA and upload to TestFlight (default)"
+    echo ""
+    echo "Examples:"
+    echo "  $0 simulator   # Quick simulator build for testing"
+    echo "  $0 device      # Build IPA for manual device installation"
+    echo "  $0 testflight  # Full build and upload to TestFlight"
+    exit 1
+fi
+
+echo "========================================"
+echo "  iOS Build Script - Mode: $BUILD_MODE"
+echo "========================================"
+echo ""
+
+# SIMULATOR MODE: Build for iOS Simulator (no code signing)
+if [ "$BUILD_MODE" = "simulator" ]; then
+    echo -e "${BLUE}Building for iOS Simulator (No Code Signing)${NC}"
+    echo ""
     
     # Build frontend
     echo "Building frontend..."
@@ -225,19 +252,25 @@ else
     echo -e "${YELLOW}Warning: $SECRETS_FILE not found, checking environment variables...${NC}"
 fi
 
-# Check for App Store Connect API credentials
-if [ -z "$APPSTORE_KEY_ID" ] || [ -z "$APPSTORE_ISSUER_ID" ] || [ -z "$APPSTORE_PRIVATE_KEY" ]; then
-    echo -e "${RED}Error: App Store Connect API credentials not found${NC}"
-    echo "Please create $SECRETS_FILE with:"
-    echo "  APPSTORE_KEY_ID=your-key-id"
-    echo "  APPSTORE_ISSUER_ID=your-issuer-id"
-    echo "  APPSTORE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
-    echo ""
-    echo "Or set them as environment variables:"
-    echo "  export APPSTORE_KEY_ID='your-key-id'"
-    echo "  export APPSTORE_ISSUER_ID='your-issuer-id'"
-    echo "  export APPSTORE_PRIVATE_KEY='your-private-key'"
-    exit 1
+# Check for App Store Connect API credentials (only required for TestFlight upload)
+if [ "$BUILD_MODE" = "testflight" ]; then
+    if [ -z "$APPSTORE_KEY_ID" ] || [ -z "$APPSTORE_ISSUER_ID" ] || [ -z "$APPSTORE_PRIVATE_KEY" ]; then
+        echo -e "${RED}Error: App Store Connect API credentials not found${NC}"
+        echo "TestFlight upload requires credentials in $SECRETS_FILE:"
+        echo "  APPSTORE_KEY_ID=your-key-id"
+        echo "  APPSTORE_ISSUER_ID=your-issuer-id"
+        echo "  APPSTORE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+        echo ""
+        echo "Or set them as environment variables:"
+        echo "  export APPSTORE_KEY_ID='your-key-id'"
+        echo "  export APPSTORE_ISSUER_ID='your-issuer-id'"
+        echo "  export APPSTORE_PRIVATE_KEY='your-private-key'"
+        echo ""
+        echo -e "${YELLOW}Tip: Use './build-local.sh device' to build IPA without uploading${NC}"
+        exit 1
+    fi
+else
+    echo -e "${YELLOW}Note: Skipping App Store credentials check (not uploading to TestFlight)${NC}"
 fi
 
 # Check for provisioning profile
@@ -247,12 +280,20 @@ DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:-Y573Y5T7X3}"
 echo -e "${GREEN}✓ Prerequisites check passed${NC}"
 echo ""
 
-# Step 0: Install provisioning profile and certificate if available
-# Check for actual .mobileprovision file first (from Shared folder), then base64
-SHARED_PROFILE="/Users/vensubramanian/Downloads/Shared/CAMC_iOS_MoCom.mobileprovision"
-PROVISIONING_PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
-mkdir -p "$PROVISIONING_PROFILES_DIR"
-PROVISIONING_PROFILE_PATH="$PROVISIONING_PROFILES_DIR/$PROVISIONING_PROFILE_UUID.mobileprovision"
+# Skip code signing setup for simulator builds
+if [ "$BUILD_MODE" = "simulator" ]; then
+    echo -e "${YELLOW}Simulator mode: Skipping code signing setup${NC}"
+    echo ""
+fi
+
+# Step 0: Install provisioning profile and certificate (device & testflight modes only)
+if [ "$BUILD_MODE" != "simulator" ]; then
+    echo -e "${YELLOW}Setting up code signing for device build...${NC}"
+    # Check for actual .mobileprovision file first (from Shared folder), then base64
+    SHARED_PROFILE="/Users/vensubramanian/Downloads/Shared/CAMC_iOS_MoCom.mobileprovision"
+    PROVISIONING_PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+    mkdir -p "$PROVISIONING_PROFILES_DIR"
+    PROVISIONING_PROFILE_PATH="$PROVISIONING_PROFILES_DIR/$PROVISIONING_PROFILE_UUID.mobileprovision"
 
 if [ -f "$SHARED_PROFILE" ]; then
     echo -e "${YELLOW}Step 0: Installing provisioning profile from Shared folder...${NC}"
@@ -329,6 +370,7 @@ else
     echo -e "${YELLOW}Warning: Certificate not installed (missing base64 or password)${NC}"
     echo ""
 fi
+fi  # End of BUILD_MODE != "simulator" check for code signing
 
 # Step 0.5: Build frontend (CRITICAL - app needs bundled assets)
 echo -e "${YELLOW}Step 0.5: Building frontend with Vite...${NC}"
@@ -843,16 +885,31 @@ fi
 echo -e "${GREEN}✓ IPA created at $IPA_FILE${NC}"
 echo ""
 
-# Step 8: Upload to TestFlight (optional - skip if SKIP_UPLOAD=1)
-if [ "${SKIP_UPLOAD:-0}" = "1" ]; then
-    echo -e "${GREEN}Skipping TestFlight upload (SKIP_UPLOAD=1)${NC}"
+# Step 8: Upload to TestFlight (only if mode is 'testflight')
+if [ "$BUILD_MODE" = "device" ]; then
+    echo -e "${GREEN}========================================${NC}"
     echo -e "${GREEN}Build complete! IPA ready for manual installation.${NC}"
+    echo -e "${GREEN}========================================${NC}"
     echo ""
-    echo -e "${YELLOW}To install on device:${NC}"
-    echo "1. Open Xcode → Window → Devices and Simulators"
-    echo "2. Select your device"
-    echo "3. Drag and drop: $IPA_PATH"
+    echo -e "${YELLOW}📱 To install on device:${NC}"
     echo ""
+    echo "Method 1: Xcode Devices (Recommended)"
+    echo "  1. Open Xcode → Window → Devices and Simulators (⇧⌘2)"
+    echo "  2. Select your device"
+    echo "  3. Drag and drop: $IPA_FILE"
+    echo ""
+    echo "Method 2: Apple Configurator"
+    echo "  1. Connect device via USB"
+    echo "  2. Open Apple Configurator 2"
+    echo "  3. Drag IPA onto device"
+    echo ""
+    echo "IPA location: $IPA_FILE"
+    echo ""
+    exit 0
+fi
+
+if [ "$BUILD_MODE" != "testflight" ]; then
+    echo -e "${YELLOW}Warning: Unknown build mode '$BUILD_MODE', skipping upload${NC}"
     exit 0
 fi
 

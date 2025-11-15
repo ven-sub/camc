@@ -5,16 +5,24 @@ mod commands;
 mod db;
 mod exports;
 
-use db::init_db;
-use rusqlite::Connection;
 use std::sync::Mutex;
+use tauri::Manager;
 
 /// Creates the Tauri application builder with all plugins and commands registered
-fn create_tauri_app(conn: Connection) -> tauri::Builder<tauri::Wry> {
+fn create_tauri_app() -> tauri::Builder<tauri::Wry> {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .manage(Mutex::new(conn))
+        .setup(|app| {
+            // Initialize database after app is set up (so we have access to app paths)
+            let conn = db::init_db(&app.handle())
+                .expect("Failed to initialize database");
+            
+            // Manage the database connection
+            app.manage(Mutex::new(conn));
+            
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::greet,
             commands::get_platform,
@@ -31,10 +39,7 @@ fn create_tauri_app(conn: Connection) -> tauri::Builder<tauri::Wry> {
 }
 
 fn main() {
-    // Initialize database
-    let conn = init_db().expect("Failed to initialize database");
-
-    create_tauri_app(conn)
+    create_tauri_app()
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -1,259 +1,216 @@
-# CAMC App
+# Circuit Assistant Mobile Companion (CAMC)
 
-A cross-platform Tauri 2 + Vue 3 + TypeScript application with support for desktop and mobile platforms.
+> Cross-platform application for Circuit Overseers to manage schedules, congregation reports, and circuit history.
 
-## Features
+[![Tauri](https://img.shields.io/badge/Tauri-2.0-24C8D8?logo=tauri)](https://v2.tauri.app/)
+[![Vue 3](https://img.shields.io/badge/Vue-3-42B883?logo=vue.js)](https://vuejs.org/)
+[![Rust](https://img.shields.io/badge/Rust-1.70+-CE422B?logo=rust)](https://www.rust-lang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 
-- **Cross-platform**: Supports macOS, Windows, Linux, iOS, and Android
-- **Modern Stack**: Tauri 2 + Vue 3 + TypeScript + Vite
-- **Local-first**: No server dependency required
-- **Type-safe**: Full TypeScript support for both frontend and backend
-- **Fast**: Rust backend with Vue 3 frontend
+## ✨ Features
 
-## Project Structure
+- 📅 **Calendar** - Manage circuit visits, events, and appointments
+- 📤 **File Export** - Export to ICS, vCard, and JSON formats
+- 📱 **Cross-Platform** - iOS, macOS, Android, Windows support
+- 🔒 **Offline-First** - Local SQLite database, no internet required
+- 🔄 **Sync Ready** - CRDT-based peer-to-peer sync (coming soon)
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- **Node.js** 18+ and npm
+- **Rust** toolchain ([Install](https://rustup.rs/))
+- **Xcode** (for iOS/macOS builds)
+- **Android Studio** or Android SDK (for Android builds)
+
+### Installation
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd camc
+
+# Install dependencies
+npm install
+
+# Run desktop app
+npm run tauri:dev
+```
+
+## 📚 Documentation
+
+- **[Getting Started](docs/getting-started/index.md)** - Complete setup guide
+- **[Architecture](docs/architecture/design-overview.md)** - System design and tech stack
+- **[Android Setup](docs/mobile/android-setup.md)** - Build for Android
+- **[iOS Setup](docs/mobile/ios-setup.md)** - Build for iOS
+- **[Features](docs/features/)** - Feature documentation
+  - [Calendar](docs/features/calendar.md)
+  - [File Export](docs/features/file-export.md)
+
+## 🛠️ Development
+
+### Desktop
+
+```bash
+# Development with hot reload
+npm run tauri:dev
+
+# Build for production
+npm run tauri:build
+```
+
+### Android
+
+```bash
+# Setup environment
+source setup-android-env.sh
+
+# Start emulator
+npm run android:emulator:start
+
+# Run app
+npm run tauri:android:dev
+```
+
+See [Android Setup Guide](docs/mobile/android-setup.md) for detailed instructions.
+
+### iOS
+
+```bash
+# Run on simulator
+npm run tauri:ios:dev
+
+# Build IPA for TestFlight
+npm run ios:build testflight
+```
+
+See [iOS Setup Guide](docs/mobile/ios-setup.md) for detailed instructions.
+
+## 📦 Available Scripts
+
+### Development
+- `npm run dev` - Frontend dev server (Vite)
+- `npm run tauri:dev` - Desktop app with hot reload
+- `npm run tauri:android:dev` - Android with hot reload
+- `npm run tauri:ios:dev` - iOS with hot reload
+
+### Building
+- `npm run build` - Build frontend
+- `npm run tauri:build` - Build desktop app
+- `npm run tauri:android:build` - Build Android APK
+- `npm run ios:build` - Build iOS IPA
+
+### Android Utilities
+- `npm run android:setup` - Setup Android environment
+- `npm run android:emulator:list` - List emulators
+- `npm run android:emulator:start` - Start emulator
+- `npm run android:debug` - Debug tools
+- `npm run android:rebuild` - Clean rebuild
+
+### iOS Utilities
+- `npm run ios:fix` - Fix Xcode project issues
+
+### Development Utilities
+- `npm run kill-dev` - Kill hanging dev servers
+- `npm run type-check` - TypeScript type checking
+
+## 🏗️ Project Structure
 
 ```
 camc/
-├── src/                    # Vue 3 frontend
-│   ├── App.vue            # Main Vue component
-│   ├── main.ts            # Vue app entry point
-│   ├── style.css          # Global styles
-│   └── vite-env.d.ts      # TypeScript declarations
-├── src-tauri/             # Rust backend
+├── docs/                    # Documentation
+│   ├── getting-started/
+│   ├── mobile/              # Android & iOS guides
+│   ├── features/            # Feature docs
+│   └── architecture/        # System design
+│
+├── scripts/                 # Build and utility scripts
+│   ├── android/             # Android-specific
+│   ├── ios/                 # iOS-specific
+│   └── dev/                 # Development utilities
+│
+├── src/                     # Frontend (Vue 3 + Quasar)
+│   ├── components/
+│   ├── pages/
+│   ├── router/
+│   ├── composables/
+│   └── utils/
+│
+├── src-tauri/               # Backend (Rust + Tauri)
 │   ├── src/
-│   │   └── main.rs        # Rust main file
-│   ├── Cargo.toml         # Rust dependencies
-│   ├── tauri.conf.json    # Tauri configuration
-│   └── icons/             # App icons
-├── package.json           # Node.js dependencies and scripts
-├── vite.config.ts         # Vite configuration
-├── tsconfig.json          # TypeScript configuration
-└── README.md              # This file
+│   │   ├── main.rs          # Desktop entry point
+│   │   ├── lib.rs           # Mobile entry point
+│   │   ├── commands.rs      # Tauri commands
+│   │   ├── exports.rs       # File export logic
+│   │   └── db.rs            # Database operations
+│   ├── Cargo.toml
+│   └── tauri.conf.json
+│
+├── .github/workflows/       # CI/CD
+├── fastlane/                # iOS deployment
+└── package.json
 ```
 
-## Prerequisites
+## 🔧 Technology Stack
 
-### Desktop Development
-- **Node.js** (v18 or later)
-- **Rust** (latest stable)
-- **Platform-specific tools**:
-  - **Windows**: Microsoft Visual Studio C++ Build Tools
-  - **macOS**: Xcode Command Line Tools
-  - **Linux**: `libwebkit2gtk-4.0-dev`, `build-essential`, `curl`, `wget`, `libssl-dev`, `libgtk-3-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | Vue 3, Quasar, TypeScript |
+| **Backend** | Rust, Tauri 2 |
+| **Database** | SQLite |
+| **Sync** | CRDT (Automerge/Yjs, planned) |
+| **Mobile** | iOS (Xcode), Android (Gradle) |
+| **CI/CD** | GitHub Actions, Fastlane |
 
-### Mobile Development
-
-#### Android
-- **Android Studio** with Android SDK
-- **Java Development Kit (JDK)** 11 or later
-- **Android SDK** API level 30 or later
-- **Gradle** (usually comes with Android Studio)
-
-#### iOS (macOS only)
-- **Xcode** (latest version)
-- **iOS SDK** (latest version)
-- **CocoaPods** (`sudo gem install cocoapods`)
-
-## Installation
-
-1. **Clone and navigate to the project**:
-   ```bash
-   cd camc
-   ```
-
-2. **Install Node.js dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Install Tauri CLI globally** (if not already installed):
-   ```bash
-   npm install -g @tauri-apps/cli@next
-   ```
-
-## Development
-
-### Desktop Development
-
-1. **Start the development server**:
-   ```bash
-   npm run tauri:dev
-   ```
-   This will:
-   - Start the Vite dev server on `http://localhost:1420`
-   - Compile and run the Tauri application
-   - Enable hot reload for both frontend and backend changes
-
-2. **Frontend-only development** (for web development):
-   ```bash
-   npm run dev
-   ```
-
-### Mobile Development
-
-#### Android Development
-
-1. **Setup Android development environment**:
-   - Install Android Studio
-   - Set up Android SDK
-   - Create an Android Virtual Device (AVD) or connect a physical device
-
-2. **Initialize Android project**:
-   ```bash
-   npm run tauri:android
-   ```
-
-3. **Run on Android**:
-   ```bash
-   npm run tauri:android:dev
-   ```
-
-4. **Build for Android**:
-   ```bash
-   npm run tauri:android:build
-   ```
-
-#### iOS Development (macOS only)
-
-1. **Setup iOS development environment**:
-   - Install Xcode from the App Store
-   - Install iOS Simulator
-   - Install CocoaPods: `sudo gem install cocoapods`
-
-2. **Initialize iOS project**:
-   ```bash
-   npm run tauri:ios
-   ```
-
-3. **Run on iOS**:
-   ```bash
-   npm run tauri:ios:dev
-   ```
-
-4. **Build for iOS**:
-   ```bash
-   npm run tauri:ios:build
-   ```
-
-## Building
-
-### Desktop Builds
-
-1. **Build for current platform**:
-   ```bash
-   npm run tauri:build
-   ```
-
-2. **Build for specific platforms**:
-   ```bash
-   # Windows (from any platform)
-   npm run tauri:build -- --target x86_64-pc-windows-msvc
-   
-   # macOS (from macOS)
-   npm run tauri:build -- --target x86_64-apple-darwin
-   npm run tauri:build -- --target aarch64-apple-darwin
-   
-   # Linux (from Linux)
-   npm run tauri:build -- --target x86_64-unknown-linux-gnu
-   ```
-
-### Mobile Builds
-
-1. **Android APK**:
-   ```bash
-   npm run tauri:android:build
-   ```
-
-2. **iOS App**:
-   ```bash
-   npm run tauri:ios:build
-   ```
-
-## Available Scripts
-
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start Vite dev server (web only) |
-| `npm run build` | Build Vue frontend for production |
-| `npm run preview` | Preview production build |
-| `npm run tauri:dev` | Start Tauri development (desktop) |
-| `npm run tauri:build` | Build Tauri app for desktop |
-| `npm run tauri:android` | Initialize Android project |
-| `npm run tauri:ios` | Initialize iOS project |
-| `npm run tauri:android:dev` | Run on Android device/emulator |
-| `npm run tauri:ios:dev` | Run on iOS device/simulator |
-| `npm run tauri:android:build` | Build Android APK |
-| `npm run tauri:ios:build` | Build iOS app |
-
-## Configuration
-
-### Tauri Configuration
-
-The main Tauri configuration is in `src-tauri/tauri.conf.json`. Key settings:
-
-- **Bundle identifier**: `com.camc.app`
-- **App name**: `CAMC App`
-- **Window settings**: 800x600 default, resizable
-- **Security**: Custom CSP disabled for development
-
-### Vite Configuration
-
-The Vite configuration in `vite.config.ts` is optimized for Tauri:
-
-- **Port**: 1420 (Tauri default)
-- **Strict port**: Prevents port conflicts
-- **Watch exclusions**: Ignores `src-tauri` directory
-
-## Development Tips
-
-1. **Hot Reload**: Both frontend and backend support hot reload during development
-2. **TypeScript**: Full type safety across the entire stack
-3. **Rust Commands**: Add new Tauri commands in `src-tauri/src/main.rs`
-4. **Vue Components**: Create reusable components in `src/components/`
-5. **Styling**: Use CSS, SCSS, or CSS-in-JS as preferred
-
-## Troubleshooting
+## 🐛 Troubleshooting
 
 ### Common Issues
 
-1. **Rust not found**: Install Rust from [rustup.rs](https://rustup.rs/)
-2. **Node modules issues**: Delete `node_modules` and run `npm install`
-3. **Tauri CLI not found**: Install globally with `npm install -g @tauri-apps/cli@next`
-4. **Android build fails**: Ensure Android SDK is properly configured
-5. **iOS build fails**: Ensure Xcode and iOS SDK are installed
+**Port already in use:**
+```bash
+npm run kill-dev
+```
 
-### Platform-Specific Issues
+**Android build fails:**
+```bash
+npm run android:rebuild
+```
 
-#### Windows
-- Install Microsoft Visual Studio C++ Build Tools
-- Ensure Windows SDK is installed
+**iOS build fails:**
+```bash
+npm run ios:fix
+```
 
-#### macOS
-- Install Xcode Command Line Tools: `xcode-select --install`
-- For iOS development, ensure Xcode is up to date
+### Detailed Guides
+- [Android Troubleshooting](docs/mobile/android-troubleshooting.md)
+- [iOS Troubleshooting](docs/mobile/ios-troubleshooting.md)
 
-#### Linux
-- Install required system dependencies:
-  ```bash
-  sudo apt update
-  sudo apt install libwebkit2gtk-4.0-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
-  ```
+## 🗺️ Roadmap
 
-## Contributing
+- [x] Desktop app (macOS, Windows)
+- [x] Calendar with import
+- [x] File export (ICS, vCard)
+- [x] Android support
+- [x] iOS support
+- [ ] Database persistence for calendar
+- [ ] CRDT peer-to-peer sync
+- [ ] Congregation management
+- [ ] Report generation
+- [ ] Multi-language support
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test on multiple platforms
-5. Submit a pull request
+## 📄 License
 
-## License
+[Your License]
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## 🤝 Contributing
 
-## Support
+Contributions welcome! See [Getting Started](docs/getting-started/index.md) for development setup.
 
-For issues and questions:
-- Check the [Tauri documentation](https://tauri.app/)
-- Check the [Vue 3 documentation](https://v3.vuejs.org/)
-- Open an issue in this repository
+## 📧 Contact
+
+[Your Contact Information]
+
+---
+
+**Built with ❤️ using Tauri, Vue, and Rust**
