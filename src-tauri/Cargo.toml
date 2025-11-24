@@ -23,6 +23,12 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 rusqlite = { version = "0.31", features = ["bundled"] }
 dirs = "5.0"
+chrono = "0.4"
+base64 = "0.21"
+printpdf = "0.7"
+lopdf = "0.32"
+oxidize-pdf = "1.6"
+regex = "1.10"
 
 [lib]
 name = "circuit_assistant_mobile_companion"

@@ -4,6 +4,8 @@
 mod commands;
 mod db;
 mod exports;
+mod pdf_exports;
+mod print_exports;
 
 use std::sync::Mutex;
 use tauri::Manager;
@@ -46,7 +48,14 @@ fn main() {
             exports::read_json_file,
             exports::create_sample_events,
             // Ensure placeholder so Files app shows the folder on device installs
-            exports::ensure_documents_placeholder
+            exports::ensure_documents_placeholder,
+            // PDF generation commands
+            pdf_exports::generate_pdf_printpdf,
+            pdf_exports::generate_pdf_lopdf,
+            pdf_exports::generate_pdf_genpdf,
+            // Print preview PDF generation commands
+            print_exports::generate_pdf_from_web_content,
+            print_exports::generate_pdf_oxidize
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

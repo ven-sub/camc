@@ -39,7 +39,7 @@ END:VCARD\r\n".to_string()
 /// Get the appropriate export directory based on platform
 /// On iOS/Android: Returns app's Documents directory (accessible via Files app)
 /// On Desktop: Returns app's data directory
-fn get_export_directory(app: &AppHandle) -> Result<PathBuf, String> {
+pub fn get_export_directory(app: &AppHandle) -> Result<PathBuf, String> {
     // On iOS/Android, use app's document directory
     // This is accessible via Files app -> "On My iPhone/iPad" -> App Name
     #[cfg(any(target_os = "ios", target_os = "android"))]

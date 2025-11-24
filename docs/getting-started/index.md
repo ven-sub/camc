@@ -215,3 +215,4 @@ rm -rf src-tauri/target/aarch64-*
 Welcome to the team! 🚀
 
 
+

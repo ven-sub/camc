@@ -1,0 +1,28 @@
+export const newRoutingObject = {
+  dateStart: null,
+  eventType: null,
+  congregation: null,
+  circuit: null,
+  notes: '',
+  submitted: false,
+  // noticeSent: false, not used anywhere
+  sharedCOcontacted: false,
+  emailCOsent: false,
+  noConflict: false,
+  visitPackageSent: false,
+  s302sent: false,
+  s302confirmed: false,
+  subCO: null,
+  coBeingServed: null,
+  visitingShepherd: null,
+  visitCreated: false,
+  branchNotified: false,
+  emailReminderSent: false,
+  jwssReminderSent: false,
+  specialEventStartTime: null,
+  specialEventVenue: null,
+  calendarUId: null,
+  calendarSequence: 0,
+  pdfFilePath: null,
+  isImported: false
+}

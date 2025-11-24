@@ -1,0 +1,401 @@
+.print-preview-container {
+  border: 2px solid #ccc;
+  background: #f5f5f5;
+  padding: 20px;
+  min-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  transition: all 0.3s ease;
+  position: relative;
+  /* Container scrolls, but content flows naturally across pages */
+}
+
+/* Landscape mode container - make background color change obvious */
+.print-preview-container.landscape-mode {
+  border-color: #ff9800;
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  border-width: 3px;
+}
+
+.orientation-badge {
+  font-weight: bold;
+  font-size: 0.9em;
+  padding: 4px 12px;
+}
+
+.print-preview-content {
+  background: white;
+  padding: var(--margin-top) var(--margin-right) var(--margin-bottom) var(--margin-left);
+  width: var(--page-width);
+  min-height: var(--page-height);
+  margin: 0 auto;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  font-size: var(--font-size);
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transform-origin: top center;
+  transition: all 0.3s ease;
+  position: relative;
+  border: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  /* Allow content to grow naturally - no height constraint */
+  height: auto;
+  overflow: visible;
+}
+
+/* Portrait mode styling - tall and narrow */
+.print-preview-content.portrait {
+  border-left: 4px solid #2196f3;
+  max-width: min(100%, var(--page-width));
+}
+
+/* Landscape mode styling - wide and short, make it visually distinct */
+.print-preview-content.landscape {
+  border-top: 4px solid #ff9800;
+  /* Landscape pages should be wider - ensure they're not constrained */
+  max-width: min(95%, var(--page-width));
+  /* Add a subtle background tint to make it more obvious */
+  background: linear-gradient(to bottom, #fffef9 0%, white 100%);
+}
+
+.print-header {
+  border-bottom: 2px solid #333;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+.print-header h1 {
+  margin: 0;
+  font-size: calc(var(--font-size) * 2); /* ~24px when base is 12px */
+}
+
+.print-meta {
+  font-size: calc(var(--font-size) * 0.83); /* ~10px when base is 12px */
+  color: #666;
+  margin-top: 5px;
+}
+
+.print-intro {
+  margin-top: 15px;
+  font-size: calc(var(--font-size) * 0.92);
+  color: #555;
+  line-height: 1.5;
+}
+
+.print-intro p {
+  margin: 0;
+}
+
+.print-body {
+  margin-top: 20px;
+  flex: 1;
+  overflow: visible;
+  /* Allow content to flow naturally across pages */
+}
+
+.table-container {
+  overflow-x: auto;
+  max-width: 100%;
+  width: 100%;
+  position: relative;
+}
+
+.table-container .q-table {
+  font-size: 0.875rem;
+  table-layout: fixed; /* Fixed layout to respect column widths */
+  width: 100%;
+}
+
+.table-container .q-table th,
+.table-container .q-table td {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  padding: 8px 6px;
+}
+
+/* Ensure Time column is visible */
+.table-container .q-table th:first-child,
+.table-container .q-table td:first-child {
+  position: sticky;
+  left: 0;
+  background-color: white;
+  z-index: 5;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.table-container .q-table thead th:first-child {
+  background-color: #f5f5f5;
+  z-index: 6;
+}
+
+/* Ensure all columns are visible and properly sized */
+.table-container .q-table th:first-child,
+.table-container .q-table td:first-child {
+  width: 90px;
+  min-width: 90px;
+  white-space: nowrap;
+}
+
+.table-container .q-table th:nth-child(2),
+.table-container .q-table td:nth-child(2) {
+  width: 50px;
+  min-width: 50px;
+  text-align: center;
+}
+
+.table-container .q-table th:nth-child(3),
+.table-container .q-table td:nth-child(3) {
+  width: 180px;
+  min-width: 150px;
+  max-width: 250px;
+}
+
+.table-container .q-table th:nth-child(4),
+.table-container .q-table td:nth-child(4) {
+  width: 120px;
+  min-width: 100px;
+}
+
+.table-container .q-table th:nth-child(5),
+.table-container .q-table td:nth-child(5) {
+  width: 100px;
+  min-width: 80px;
+}
+
+.table-container .q-table th:nth-child(6),
+.table-container .q-table td:nth-child(6) {
+  width: 100px;
+  min-width: 90px;
+}
+
+.table-container .q-table th:nth-child(7),
+.table-container .q-table td:nth-child(7) {
+  width: 200px;
+  max-width: 200px;
+  min-width: 150px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.4;
+  overflow: hidden;
+}
+
+.table-container .q-table th:last-child,
+.table-container .q-table td:last-child {
+  width: 100px;
+  min-width: 100px;
+  text-align: center;
+  white-space: nowrap;
+  position: sticky;
+  right: 0;
+  background-color: white;
+  z-index: 10;
+}
+
+.table-container .q-table thead th:last-child {
+  background-color: #f5f5f5;
+  z-index: 11;
+}
+
+/* Ensure table doesn't overflow container */
+.table-container .q-table__container {
+  overflow-x: auto;
+  width: 100%;
+  position: relative;
+}
+
+.table-container .q-table__top {
+  overflow-x: hidden;
+}
+
+/* Make instructions column wrap properly - ensure it doesn't expand infinitely */
+.table-container .q-table td:nth-child(7) {
+  max-width: 200px !important;
+  width: 200px !important;
+  word-break: break-word;
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+
+/* Print table styles */
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: var(--font-size);
+}
+
+.print-table thead {
+  background-color: #f5f5f5;
+  border-bottom: 2px solid #333;
+}
+
+.print-table th {
+  padding: 8px 6px;
+  text-align: left;
+  font-weight: bold;
+  font-size: calc(var(--font-size) * 0.92);
+  border-right: 1px solid #ddd;
+}
+
+.print-table th:last-child {
+  border-right: none;
+}
+
+.print-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid #ddd;
+  border-right: 1px solid #eee;
+  vertical-align: top;
+}
+
+.print-table td:last-child {
+  border-right: none;
+}
+
+.print-item-row {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.print-item-row:hover {
+  background-color: #fafafa;
+}
+
+.col-time {
+  width: 10%;
+  white-space: nowrap;
+}
+
+.col-theme {
+  width: 25%;
+}
+
+.col-speaker {
+  width: 15%;
+}
+
+.col-type {
+  width: 15%;
+}
+
+.col-instructions {
+  width: 35%;
+  font-size: calc(var(--font-size) * 0.92);
+  line-height: 1.5;
+  text-align: justify;
+}
+
+.item-number {
+  font-weight: bold;
+  color: #1976d2;
+  margin-right: 4px;
+}
+
+.duration {
+  color: #666;
+  font-size: calc(var(--font-size) * 0.85);
+}
+
+.page-break-row {
+  page-break-before: always;
+  height: auto;
+  min-height: 60px;
+}
+
+.page-break-row td {
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+/* Page break separator - only visible in preview */
+.page-break-separator {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  margin: 30px 0;
+  padding: 15px 0;
+  position: relative;
+  width: 100%;
+  z-index: 10;
+}
+
+.page-break-line {
+  flex: 1;
+  height: 2px;
+  background: repeating-linear-gradient(
+    to right,
+    #666 0px,
+    #666 8px,
+    transparent 8px,
+    transparent 16px
+  );
+  min-width: 20px;
+}
+
+.page-break-label {
+  margin: 0 15px;
+  font-size: calc(var(--font-size) * 0.8);
+  color: #666;
+  background: white;
+  padding: 4px 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+/* Print styles */
+@media print {
+  .print-preview-container {
+    border: none;
+    background: white;
+    padding: 0;
+  }
+
+  .print-preview-content {
+    box-shadow: none;
+    margin: 0;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    page-break-after: always;
+  }
+
+  .print-preview-content:last-child {
+    page-break-after: auto;
+  }
+
+  .print-item-row {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  .print-table {
+    border: 1px solid #000;
+  }
+  
+  .print-table th,
+  .print-table td {
+    border: 1px solid #000;
+  }
+
+  .print-header {
+    page-break-after: avoid;
+  }
+
+  /* Hide page break separators in actual print/PDF */
+  .page-break-separator {
+    display: none;
+  }
+}
+

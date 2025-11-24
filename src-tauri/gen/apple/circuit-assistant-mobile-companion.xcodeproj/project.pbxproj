@@ -36,6 +36,7 @@
 		81CE01A511C219060A14E786 /* circuit-assistant-mobile-companion_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "circuit-assistant-mobile-companion_iOS.entitlements"; sourceTree = "<group>"; };
 		88837FD9E01689D817D8AE59 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		93548A00C61156C271E97CAF /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
+		A216F87D0C8B27108E27C537 /* pdf_exports.rs */ = {isa = PBXFileReference; path = pdf_exports.rs; sourceTree = "<group>"; };
 		A81335AFF792AF12E0AE29A4 /* exports.rs */ = {isa = PBXFileReference; path = exports.rs; sourceTree = "<group>"; };
 		CD1CB63B4B5A270180642863 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		DAEE28423BD399DEC13B88F9 /* lib.rs */ = {isa = PBXFileReference; path = lib.rs; sourceTree = "<group>"; };
@@ -75,6 +76,7 @@
 				A81335AFF792AF12E0AE29A4 /* exports.rs */,
 				DAEE28423BD399DEC13B88F9 /* lib.rs */,
 				3311089F10CF62A283DE429D /* main.rs */,
+				A216F87D0C8B27108E27C537 /* pdf_exports.rs */,
 			);
 			name = src;
 			path = ../../src;

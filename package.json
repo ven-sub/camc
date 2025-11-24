@@ -49,6 +49,7 @@
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-dialog": "^2.0.0",
     "@tauri-apps/plugin-fs": "^2.0.0",
+    "html2pdf.js": "^0.12.1",
     "quasar": "^2.18.5",
     "vue": "^3.4.0",
     "vue-router": "^4.2.5"

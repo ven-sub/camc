@@ -4,6 +4,8 @@
 mod commands;
 mod db;
 mod exports;
+mod pdf_exports;
+mod print_exports;
 
 use std::sync::Mutex;
 use tauri::Manager;
@@ -27,6 +29,10 @@ fn create_tauri_app() -> tauri::Builder<tauri::Wry> {
             commands::greet,
             commands::get_platform,
             commands::test_db_connection,
+            // Model data CRUD commands
+            commands::read_model_data,
+            commands::write_model_data,
+            commands::list_model_data_files,
             exports::export_ics,
             exports::export_vcard,
             exports::get_ics_content,
@@ -34,7 +40,14 @@ fn create_tauri_app() -> tauri::Builder<tauri::Wry> {
             exports::list_json_files,
             exports::read_json_file,
             exports::create_sample_events,
-            exports::ensure_documents_placeholder
+            exports::ensure_documents_placeholder,
+            // PDF generation commands
+            pdf_exports::generate_pdf_printpdf,
+            pdf_exports::generate_pdf_lopdf,
+            pdf_exports::generate_pdf_genpdf,
+            // Print preview PDF generation commands
+            print_exports::generate_pdf_from_web_content,
+            print_exports::generate_pdf_oxidize
         ])
 }
 

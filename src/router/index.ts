@@ -16,6 +16,16 @@ const routes = [
     path: '/settings',
     name: 'Settings',
     component: () => import('../pages/SettingsPage.vue')
+  },
+  {
+    path: '/print-list',
+    name: 'PrintList',
+    component: () => import('../pages/PrintPreviewPage.vue')
+  },
+  {
+    path: '/model-crud',
+    name: 'ModelCrud',
+    component: () => import('../pages/ModelCrudPage.vue')
   }
 ]
 

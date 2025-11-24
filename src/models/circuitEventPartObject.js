@@ -1,0 +1,23 @@
+export const newCircuitEventPartObject = {
+  partTime: null,
+  partDurationInMinutes: null,
+  partTheme: null,
+  partOutlineNumber: null,
+  partBranchRep: false,
+  partFieldRep: false,
+  partSharedCO: false,
+  partCOTalk: false,
+  partSpeaker: null,
+  partType: null,
+  talkIncludes: [],
+  symposium: false,
+  partInstructions: null,
+  videoLink: null,
+  partConfirmed: false,
+  emailSent: false,
+  jwEmailSent: false,
+  partOutlineFiles: [],
+  speakerDirectionFiles: [],
+  event: null,
+  participants: []
+}

@@ -54,6 +54,36 @@
               <strong>Saved to:</strong> {{ eventsExport.filePath.value }}
             </div>
           </div>
+
+          <!-- Fillable PDF Generation -->
+          <div class="row items-center q-gutter-sm">
+            <q-btn
+              color="deep-purple"
+              icon="picture_as_pdf"
+              label="Create Fillable PDF"
+              @click="showPdfDialog = true"
+            />
+          </div>
+
+          <!-- Print Preview List -->
+          <div class="row items-center q-gutter-sm">
+            <q-btn
+              color="orange"
+              icon="print"
+              label="Print Preview List"
+              @click="openPrintList"
+            />
+          </div>
+
+          <!-- Model CRUD -->
+          <div class="row items-center q-gutter-sm">
+            <q-btn
+              color="teal"
+              icon="database"
+              label="Model CRUD"
+              @click="openModelCrud"
+            />
+          </div>
         </div>
       </q-card-section>
 
@@ -66,13 +96,60 @@
         </div>
       </q-card-section>
     </q-card>
+
+    <!-- PDF Type Selection Dialog -->
+    <q-dialog v-model="showPdfDialog">
+      <q-card style="min-width: 350px">
+        <q-card-section>
+          <div class="text-h6">Select Form Type</div>
+          <div class="text-caption text-grey-7">Choose a form to generate</div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-none q-gutter-sm">
+          <q-btn
+            color="primary"
+            icon="event"
+            label="Meeting Schedule"
+            @click="generatePdf('printpdf')"
+            :loading="pdfLoading === 'printpdf'"
+            class="full-width"
+            align="left"
+          />
+          <q-btn
+            color="secondary"
+            icon="map"
+            label="Territory Assignment"
+            @click="generatePdf('lopdf')"
+            :loading="pdfLoading === 'lopdf'"
+            class="full-width"
+            align="left"
+          />
+          <q-btn
+            color="accent"
+            icon="assignment"
+            label="Service Report"
+            @click="generatePdf('genpdf')"
+            :loading="pdfLoading === 'genpdf'"
+            class="full-width"
+            align="left"
+          />
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import { useFileExport } from '../composables/useFileExport'
+
+const router = useRouter()
 
 // Platform detection for user feedback messages
 const isMobile = ref(false)
@@ -115,5 +192,43 @@ const eventsExport = useFileExport({
 })
 
 const createSampleEvents = () => eventsExport.execute(isMobile.value)
+
+// PDF Dialog State
+const showPdfDialog = ref(false)
+const pdfLoading = ref<string | null>(null)
+
+const generatePdf = async (type: 'printpdf' | 'lopdf' | 'genpdf') => {
+  pdfLoading.value = type
+  try {
+    const commandMap = {
+      printpdf: 'generate_pdf_printpdf',
+      lopdf: 'generate_pdf_lopdf',
+      genpdf: 'generate_pdf_genpdf'
+    }
+    const formNames = {
+      printpdf: 'Meeting Schedule',
+      lopdf: 'Territory Assignment',
+      genpdf: 'Service Report'
+    }
+    
+    const filePath = await invoke<string>(commandMap[type])
+    
+    // Show success notification (similar to existing exports)
+    console.log(`${formNames[type]} PDF created:`, filePath)
+    showPdfDialog.value = false
+  } catch (error) {
+    console.error('PDF generation failed:', error)
+  } finally {
+    pdfLoading.value = null
+  }
+}
+
+const openPrintList = () => {
+  router.push('/print-list')
+}
+
+const openModelCrud = () => {
+  router.push('/model-crud')
+}
 </script>
 

@@ -1,0 +1,26 @@
+export const newConventionObject = {
+  conventionIdentifier: '',
+  conventionStartDate: '',
+  venue: '',
+  eventLanguage: '',
+  congregationsAssignedArray: [],
+  serviceYear: '',
+  conventionCommitteeCoordinator: '',
+  assitantToCCC: '',
+  programOverseer: '',
+  assistantToPO: '',
+  roomingOverseer: '',
+  assistantToRO: '',
+  conventionChairman: '',
+  conventionCommitteeEmail: '',
+  routingEventId: '',
+  // for Chairman's Office
+  walkthroughTimeNote: '',
+  officeAssignments: [],
+  officePersonnel: [],
+  reportQ1: '',
+  reportQ2: '',
+  reportQ3: '',
+  reportQ4: '',
+  notes: ''
+}
